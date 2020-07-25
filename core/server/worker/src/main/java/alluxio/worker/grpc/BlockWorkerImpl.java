@@ -60,6 +60,7 @@ import java.util.Map;
 @SuppressFBWarnings("BC_UNCONFIRMED_CAST")
 public class BlockWorkerImpl extends BlockWorkerGrpc.BlockWorkerImplBase {
   private static final Logger LOG = LoggerFactory.getLogger(BlockWorkerImpl.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   private static final boolean ZERO_COPY_ENABLED =
       ServerConfiguration.getBoolean(PropertyKey.WORKER_NETWORK_ZEROCOPY_ENABLED);
@@ -153,6 +154,7 @@ public class BlockWorkerImpl extends BlockWorkerGrpc.BlockWorkerImplBase {
   @Override
   public void asyncCache(AsyncCacheRequest request,
       StreamObserver<AsyncCacheResponse> responseObserver) {
+    TRACELOG.info("asyncCache request={}", request.toString());
     RpcUtils.call(LOG, (RpcUtils.RpcCallableThrowsIOException<AsyncCacheResponse>) () -> {
       mRequestManager.submitRequest(request);
       return AsyncCacheResponse.getDefaultInstance();

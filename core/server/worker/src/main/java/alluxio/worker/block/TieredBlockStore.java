@@ -91,6 +91,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 @NotThreadSafe // TODO(jiri): make thread-safe (c.f. ALLUXIO-1624)
 public class TieredBlockStore implements BlockStore {
   private static final Logger LOG = LoggerFactory.getLogger(TieredBlockStore.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   private static final long FREE_SPACE_TIMEOUT_MS =
       ServerConfiguration.getMs(PropertyKey.WORKER_FREE_SPACE_TIMEOUT);
@@ -192,6 +193,7 @@ public class TieredBlockStore implements BlockStore {
       throws BlockDoesNotExistException, BlockAlreadyExistsException, InvalidWorkerStateException,
       IOException {
     LOG.debug("getBlockWriter: sessionId={}, blockId={}", sessionId, blockId);
+    TRACELOG.info("getBlockWriter: sessionId={}, blockId={}", sessionId, blockId);
     // NOTE: a temp block is supposed to only be visible by its own writer, unnecessary to acquire
     // block lock here since no sharing
     // TODO(bin): Handle the case where multiple writers compete for the same block.
@@ -665,6 +667,7 @@ public class TieredBlockStore implements BlockStore {
     // 1. remove blocks to make room.
     for (Pair<Long, BlockStoreLocation> blockInfo : plan.toEvict()) {
       try {
+        TRACELOG.info("Trying to remove block id {}, location {}", blockInfo.getFirst(), blockInfo.getSecond());
         removeBlockInternal(Sessions.createInternalSessionId(),
             blockInfo.getFirst(), blockInfo.getSecond());
       } catch (InvalidWorkerStateException e) {

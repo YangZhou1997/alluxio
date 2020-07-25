@@ -10,4 +10,7 @@
 #
 
 # An Alluxio Worker will be started on each of the machines listed below.
-localhost
+node1
+node2
+node3
+node4

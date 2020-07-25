@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-#
-# The Alluxio Open Foundation licenses this work under the Apache License, version 2.0
-# (the "License"). You may not use this work except in compliance with the License, which is
-# available at www.apache.org/licenses/LICENSE-2.0
-#
-# This software is distributed on an "AS IS" basis, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
-# either express or implied, as more fully set forth in the License.
-#
-# See the NOTICE file distributed with this work for information regarding copyright ownership.
-#
 
-set -e
+source ~/.profile
+mvn clean install -Dlicense.skip=true -Phadoop-2 -Dhadoop.version=2.8.5 -DskipTests -Dcheckstyle.skip
+cd ~/bigdata-conf/ && ./sync_conf.sh
 
-mvn clean install -Phadoop-2 -Dhadoop.version=2.7.7 -DskipTests
+alluxio-stop.sh all
+alluxio format
+alluxio-start.sh all SudoMount
+
+# Enable writing data into alluxio: Two Ways to Keep Files in Sync Between Alluxio and HDFS
+alluxio fs ls -R -Dalluxio.user.file.metadata.sync.interval=0 /user/hive/warehouse/sqlres

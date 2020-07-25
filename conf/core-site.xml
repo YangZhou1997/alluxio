@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. See accompanying LICENSE file.
+-->
+
+<!-- Put site-specific property overrides in this file. -->
+
+<configuration>
+    <property>
+        <name>fs.defaultFS</name>
+        <value>hdfs://node0:9000</value>
+    </property>
+
+    <property>
+      <name>fs.s3a.aws.credentials.provider</name>
+      <value>org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider</value>
+    </property>
+
+    <property>
+      <name>fs.s3a.access.key</name>
+      <value>ASIASKBSPREDVNEAGSK2</value>
+    </property>
+
+    <property>
+      <name>fs.s3a.secret.key</name>
+      <value>7Zn9LsNCq54vUvx3b6t5B8+PWstWRa9wPZpgp41r</value>
+    </property>
+
+    <property>
+      <name>fs.s3a.session.token</name>
+      <value>FwoGZXIvYXdzEDwaDBsiwAsNIccZGZ92syK0AUruXnLHJy7hq7J+Vv6tXm7lwHVsA1lzTdT2HAFvOfyDiFQIrmeZLtsUZZb+hiIakZWM3mxg3lKGwECj0F6kI7bdlJAweF6WOQPq1NZ1KQHFYNyLcvJmSa7GbfZm5VuleczzwIrRCM64GygbsFgKkMVkZqB3CKVwZZqtnbWRQNYHKL1WWrzz3ThO2d4mmx8pGfkwmCfS0vjLAMOYtpiPgkdWNPPDf104PltfCuERGqaOtoAx5CjX2Y34BTIty8QQsI4lnPg5BB4Ne8HpT/PfMcvV+uLQJbrS/Vx/YQcSt6CtVndJSIFa9ckV</value>
+    </property>
+
+</configuration>
+
