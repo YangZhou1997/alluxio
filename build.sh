@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 source ~/.profile
-mvn clean install -Dlicense.skip=true -Phadoop-2 -Dhadoop.version=2.8.5 -DskipTests -Dcheckstyle.skip
+mvn clean install -Dlicense.skip=true -Phadoop-2 -Dhadoop.version=2.8.5 -DskipTests -Dcheckstyle.skip -Dmaven.test.skip=true
 cd ~/bigdata-conf/ && ./sync_conf.sh
 
 alluxio-stop.sh all

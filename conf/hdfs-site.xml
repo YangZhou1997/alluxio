@@ -19,12 +19,12 @@
 <configuration>
     <property>
             <name>dfs.namenode.name.dir</name>
-            <value>/home/administrator/data/nameNode</value>
+            <value>/home/ubuntu/data/nameNode</value>
     </property>
 
     <property>
             <name>dfs.datanode.data.dir</name>
-            <value>/home/administrator/data/dataNode</value>
+            <value>/home/ubuntu/data/dataNode</value>
     </property>
 
     <property>

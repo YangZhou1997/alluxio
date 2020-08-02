@@ -103,6 +103,10 @@ public class HdfsUnderFileSystem extends ConsistentUnderFileSystem
   public static HdfsUnderFileSystem createInstance(AlluxioURI ufsUri,
       UnderFileSystemConfiguration conf) {
     Configuration hdfsConf = createConfiguration(conf);
+    if(ufsUri.toString().startsWith("alluxio://")) {
+        hdfsConf.set("fs.alluxio.impl", "alluxio.hadoop.FileSystem");
+        hdfsConf.set("fs.AbstractFileSystem.alluxio.impl", "alluxio.hadoop.AlluxioFileSystem");
+    }
     return new HdfsUnderFileSystem(ufsUri, conf, hdfsConf);
   }
 

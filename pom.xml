@@ -921,6 +921,7 @@
               <jacoco-agent.destfile>${build.path}/../target/jacoco-combined.exec</jacoco-agent.destfile>
             </systemPropertyVariables>
             <useSystemClassLoader>${surefire.useSystemClassLoader}</useSystemClassLoader>
+            <testFailureIgnore>true</testFailureIgnore>
           </configuration>
         </plugin>
         <plugin>

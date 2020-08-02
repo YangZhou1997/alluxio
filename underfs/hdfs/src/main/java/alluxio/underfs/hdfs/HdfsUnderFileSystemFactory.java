@@ -60,6 +60,11 @@ public final class HdfsUnderFileSystemFactory implements UnderFileSystemFactory 
           return true;
         }
       }
+      // we extending hdfs ufs to support alluxio fs: 
+      // as alluxio.hadoop.FileSystem provides a Hadoop compatible FileSystem interface; 
+      if (path.startsWith("alluxio://")){
+          return true;
+      }
     }
     return false;
   }
@@ -83,6 +88,11 @@ public final class HdfsUnderFileSystemFactory implements UnderFileSystemFactory 
             return true;
           }
         }
+      }
+      // we extending hdfs ufs to support alluxio fs: 
+      // as alluxio.hadoop.FileSystem provides a Hadoop compatible FileSystem interface; 
+      if (path.startsWith("alluxio://")){
+        return true;
       }
     }
     return false;
