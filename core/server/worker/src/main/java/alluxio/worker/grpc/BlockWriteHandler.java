@@ -41,6 +41,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 @NotThreadSafe
 public final class BlockWriteHandler extends AbstractWriteHandler<BlockWriteRequestContext> {
   private static final Logger LOG = LoggerFactory.getLogger(BlockWriteHandler.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
   private static final long FILE_BUFFER_SIZE = ServerConfiguration.getBytes(
       PropertyKey.WORKER_FILE_BUFFER_SIZE);
 
@@ -89,6 +90,7 @@ public final class BlockWriteHandler extends AbstractWriteHandler<BlockWriteRequ
   @Override
   protected void completeRequest(BlockWriteRequestContext context) throws Exception {
     WriteRequest request = context.getRequest();
+    TRACELOG.info("BlockWriteHandler request: {}", request.toString());
     if (context.getBlockWriter() != null) {
       context.getBlockWriter().close();
     }

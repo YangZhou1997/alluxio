@@ -10,3 +10,5 @@ alluxio-start.sh all SudoMount
 
 # Enable writing data into alluxio: Two Ways to Keep Files in Sync Between Alluxio and HDFS
 alluxio fs ls -R -Dalluxio.user.file.metadata.sync.interval=0 /user/hive/warehouse/sqlres
+
+cd ~/spark-tpc-ds-performance-test && python run_all.py

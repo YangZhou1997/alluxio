@@ -193,7 +193,7 @@ public class TieredBlockStore implements BlockStore {
       throws BlockDoesNotExistException, BlockAlreadyExistsException, InvalidWorkerStateException,
       IOException {
     LOG.debug("getBlockWriter: sessionId={}, blockId={}", sessionId, blockId);
-    TRACELOG.info("getBlockWriter: sessionId={}, blockId={}", sessionId, blockId);
+    TRACELOG.info("TieredBlockStore getBlockWriter: blockId: {}", blockId);
     // NOTE: a temp block is supposed to only be visible by its own writer, unnecessary to acquire
     // block lock here since no sharing
     // TODO(bin): Handle the case where multiple writers compete for the same block.
@@ -667,7 +667,6 @@ public class TieredBlockStore implements BlockStore {
     // 1. remove blocks to make room.
     for (Pair<Long, BlockStoreLocation> blockInfo : plan.toEvict()) {
       try {
-        TRACELOG.info("Trying to remove block id {}, location {}", blockInfo.getFirst(), blockInfo.getSecond());
         removeBlockInternal(Sessions.createInternalSessionId(),
             blockInfo.getFirst(), blockInfo.getSecond());
       } catch (InvalidWorkerStateException e) {
@@ -856,6 +855,7 @@ public class TieredBlockStore implements BlockStore {
 
       try (LockResource r = new LockResource(mMetadataWriteLock)) {
         mMetaManager.removeBlockMeta(blockMeta);
+        TRACELOG.info("TieredBlockStore remove blockId: {}", blockId);
       } catch (BlockDoesNotExistException e) {
         throw Throwables.propagate(e); // we shall never reach here
       }

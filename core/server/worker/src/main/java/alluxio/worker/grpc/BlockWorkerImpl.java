@@ -104,6 +104,7 @@ public class BlockWorkerImpl extends BlockWorkerGrpc.BlockWorkerImplBase {
 
   @Override
   public StreamObserver<ReadRequest> readBlock(StreamObserver<ReadResponse> responseObserver) {
+    TRACELOG.info("BlockWorkerImpl readBlock: {}", responseObserver);
     CallStreamObserver<ReadResponse> callStreamObserver =
         (CallStreamObserver<ReadResponse>) responseObserver;
     if (ZERO_COPY_ENABLED) {
@@ -120,6 +121,7 @@ public class BlockWorkerImpl extends BlockWorkerGrpc.BlockWorkerImplBase {
   @Override
   public StreamObserver<alluxio.grpc.WriteRequest> writeBlock(
       StreamObserver<WriteResponse> responseObserver) {
+    TRACELOG.info("BlockWorkerImpl writeBlock: {}", responseObserver);
     ServerCallStreamObserver<WriteResponse> serverResponseObserver =
         (ServerCallStreamObserver<WriteResponse>) responseObserver;
     if (ZERO_COPY_ENABLED) {
@@ -135,6 +137,7 @@ public class BlockWorkerImpl extends BlockWorkerGrpc.BlockWorkerImplBase {
   @Override
   public StreamObserver<OpenLocalBlockRequest> openLocalBlock(
       StreamObserver<OpenLocalBlockResponse> responseObserver) {
+    TRACELOG.info("BlockWorkerImpl openLocalBlock: {}", responseObserver);
     ShortCircuitBlockReadHandler handler = new ShortCircuitBlockReadHandler(
         mWorkerProcess.getWorker(BlockWorker.class), responseObserver, getAuthenticatedUserInfo());
     return handler;
@@ -143,6 +146,7 @@ public class BlockWorkerImpl extends BlockWorkerGrpc.BlockWorkerImplBase {
   @Override
   public StreamObserver<CreateLocalBlockRequest> createLocalBlock(
       StreamObserver<CreateLocalBlockResponse> responseObserver) {
+    TRACELOG.info("BlockWorkerImpl createLocalBlock: {}", responseObserver);
     ShortCircuitBlockWriteHandler handler = new ShortCircuitBlockWriteHandler(
         mWorkerProcess.getWorker(BlockWorker.class), responseObserver, getAuthenticatedUserInfo());
     ServerCallStreamObserver<CreateLocalBlockResponse> serverCallStreamObserver =
@@ -154,7 +158,7 @@ public class BlockWorkerImpl extends BlockWorkerGrpc.BlockWorkerImplBase {
   @Override
   public void asyncCache(AsyncCacheRequest request,
       StreamObserver<AsyncCacheResponse> responseObserver) {
-    TRACELOG.info("asyncCache request={}", request.toString());
+    TRACELOG.info("BlockWorkerImpl asyncCache request: {}", request.toString());
     RpcUtils.call(LOG, (RpcUtils.RpcCallableThrowsIOException<AsyncCacheResponse>) () -> {
       mRequestManager.submitRequest(request);
       return AsyncCacheResponse.getDefaultInstance();
@@ -164,6 +168,7 @@ public class BlockWorkerImpl extends BlockWorkerGrpc.BlockWorkerImplBase {
   @Override
   public void removeBlock(RemoveBlockRequest request,
       StreamObserver<RemoveBlockResponse> responseObserver) {
+    TRACELOG.info("BlockWorkerImpl removeBlock request: {}", request.toString());
     long sessionId = IdUtils.createSessionId();
     RpcUtils.call(LOG, (RpcUtils.RpcCallableThrowsIOException<RemoveBlockResponse>) () -> {
       mWorkerProcess.getWorker(BlockWorker.class).removeBlock(sessionId, request.getBlockId());
@@ -174,6 +179,7 @@ public class BlockWorkerImpl extends BlockWorkerGrpc.BlockWorkerImplBase {
   @Override
   public void moveBlock(MoveBlockRequest request,
       StreamObserver<MoveBlockResponse> responseObserver) {
+    TRACELOG.info("BlockWorkerImpl moveBlock request: {}", request.toString());
     long sessionId = IdUtils.createSessionId();
     RpcUtils.call(LOG, (RpcUtils.RpcCallableThrowsIOException<MoveBlockResponse>) () -> {
       mWorkerProcess.getWorker(BlockWorker.class).moveBlockToMedium(sessionId,
@@ -185,6 +191,7 @@ public class BlockWorkerImpl extends BlockWorkerGrpc.BlockWorkerImplBase {
   @Override
   public void clearMetrics(ClearMetricsRequest request,
       StreamObserver<ClearMetricsResponse> responseObserver) {
+    TRACELOG.info("BlockWorkerImpl clearMetrics request: {}", request.toString());
     long sessionId = IdUtils.createSessionId();
     RpcUtils.call(LOG, (RpcUtils.RpcCallableThrowsIOException<ClearMetricsResponse>) () -> {
       mWorkerProcess.getWorker(BlockWorker.class).clearMetrics();

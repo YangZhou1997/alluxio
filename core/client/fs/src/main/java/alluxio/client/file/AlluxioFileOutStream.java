@@ -55,6 +55,7 @@ import javax.annotation.concurrent.ThreadSafe;
 @NotThreadSafe
 public class AlluxioFileOutStream extends FileOutStream {
   private static final Logger LOG = LoggerFactory.getLogger(AlluxioFileOutStream.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   /** Used to manage closeable resources. */
   private final Closer mCloser;
@@ -84,6 +85,7 @@ public class AlluxioFileOutStream extends FileOutStream {
    */
   public AlluxioFileOutStream(AlluxioURI path, OutStreamOptions options, FileSystemContext context)
       throws IOException {
+    TRACELOG.info("AlluxioFileOutStream: {}", path.toString());
     mCloser = Closer.create();
     // Acquire a resource to block FileSystemContext reinitialization, this needs to be done before
     // using mContext.

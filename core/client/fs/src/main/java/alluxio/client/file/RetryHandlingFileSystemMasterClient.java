@@ -70,6 +70,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import javax.annotation.concurrent.ThreadSafe;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A wrapper for the gRPC client to interact with the file system master, used by alluxio clients.
@@ -80,6 +82,7 @@ public final class RetryHandlingFileSystemMasterClient extends AbstractMasterCli
     implements FileSystemMasterClient {
   private FileSystemMasterClientServiceGrpc.FileSystemMasterClientServiceBlockingStub mClient =
       null;
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   /**
    * Creates a new {@link RetryHandlingFileSystemMasterClient} instance.
@@ -128,6 +131,7 @@ public final class RetryHandlingFileSystemMasterClient extends AbstractMasterCli
   @Override
   public void createDirectory(final AlluxioURI path,
       final CreateDirectoryPOptions options) throws AlluxioStatusException {
+    TRACELOG.info("RetryHandlingFileSystemMasterClient createDirectory: {}", path.toString());
     retryRPC(
         () -> mClient.createDirectory(CreateDirectoryPRequest.newBuilder()
             .setPath(getTransportPath(path)).setOptions(options).build()),
@@ -137,6 +141,7 @@ public final class RetryHandlingFileSystemMasterClient extends AbstractMasterCli
   @Override
   public URIStatus createFile(final AlluxioURI path, final CreateFilePOptions options)
       throws AlluxioStatusException {
+    TRACELOG.info("RetryHandlingFileSystemMasterClient createFile: {}", path.toString());
     return retryRPC(
         () -> new URIStatus(GrpcUtils.fromProto(mClient.createFile(CreateFilePRequest.newBuilder()
             .setPath(getTransportPath(path)).setOptions(options).build()).getFileInfo())),

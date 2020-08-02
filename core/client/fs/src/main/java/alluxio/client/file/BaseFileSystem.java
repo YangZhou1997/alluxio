@@ -89,6 +89,7 @@ import javax.annotation.concurrent.ThreadSafe;
 @ThreadSafe
 public class BaseFileSystem implements FileSystem {
   private static final Logger LOG = LoggerFactory.getLogger(BaseFileSystem.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
   /** Used to manage closeable resources. */
   private final Closer mCloser = Closer.create();
   protected final FileSystemContext mFsContext;
@@ -131,6 +132,7 @@ public class BaseFileSystem implements FileSystem {
   @Override
   public void createDirectory(AlluxioURI path, CreateDirectoryPOptions options)
       throws FileAlreadyExistsException, InvalidPathException, IOException, AlluxioException {
+    TRACELOG.info("BaseFileSystem createDirectory: {}", path.toString());
     checkUri(path);
     rpc(client -> {
       CreateDirectoryPOptions mergedOptions = FileSystemOptions.createDirectoryDefaults(
@@ -144,6 +146,7 @@ public class BaseFileSystem implements FileSystem {
   @Override
   public FileOutStream createFile(AlluxioURI path, CreateFilePOptions options)
       throws FileAlreadyExistsException, InvalidPathException, IOException, AlluxioException {
+    TRACELOG.info("BaseFileSystem createFile: {}", path.toString());
     checkUri(path);
     return rpc(client -> {
       CreateFilePOptions mergedOptions = FileSystemOptions.createFileDefaults(
@@ -329,6 +332,7 @@ public class BaseFileSystem implements FileSystem {
   public FileInStream openFile(AlluxioURI path, OpenFilePOptions options)
       throws FileDoesNotExistException, OpenDirectoryException, FileIncompleteException,
       IOException, AlluxioException {
+    TRACELOG.info("BaseFileSystem openFile: {}", path.toString());
     checkUri(path);
     AlluxioConfiguration conf = mFsContext.getPathConf(path);
     URIStatus status = getStatus(path,
@@ -343,6 +347,7 @@ public class BaseFileSystem implements FileSystem {
   public FileInStream openFile(URIStatus status, OpenFilePOptions options)
       throws FileDoesNotExistException, OpenDirectoryException, FileIncompleteException,
       IOException, AlluxioException {
+    TRACELOG.info("BaseFileSystem openFile: {}", status.getPath().toString());
     AlluxioURI path = new AlluxioURI(status.getPath());
     if (status.isFolder()) {
       throw new OpenDirectoryException(path);

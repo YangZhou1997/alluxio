@@ -18,6 +18,8 @@ import alluxio.grpc.WriteResponse;
 import alluxio.security.authentication.AuthenticatedUserInfo;
 import alluxio.worker.WorkerProcess;
 import alluxio.worker.block.BlockWorker;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.grpc.stub.StreamObserver;
 
@@ -26,6 +28,8 @@ import io.grpc.stub.StreamObserver;
  * to corresponding write handlers.
  */
 public class DelegationWriteHandler implements StreamObserver<alluxio.grpc.WriteRequest> {
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
+
   private final StreamObserver<WriteResponse> mResponseObserver;
   private final WorkerProcess mWorkerProcess;
   private final DataMessageMarshaller<WriteRequest> mMarshaller;
@@ -55,6 +59,7 @@ public class DelegationWriteHandler implements StreamObserver<alluxio.grpc.Write
   }
 
   private AbstractWriteHandler createWriterHandler(alluxio.grpc.WriteRequest request) {
+    TRACELOG.info("DelegationWriteHandler request: {}", request.toString());
     switch (request.getCommand().getType()) {
       case ALLUXIO_BLOCK:
         return new BlockWriteHandler(mWorkerProcess.getWorker(BlockWorker.class), mResponseObserver,

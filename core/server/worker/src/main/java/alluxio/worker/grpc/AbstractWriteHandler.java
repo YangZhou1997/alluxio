@@ -59,6 +59,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 @NotThreadSafe
 abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractWriteHandler.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   /** The observer for sending response messages. */
   private final StreamObserver<WriteResponse> mResponseObserver;
@@ -102,6 +103,7 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
     if (!tryAcquireSemaphore()) {
       return;
     }
+    TRACELOG.info("AbstractWriteHandler request: {}", writeRequest.toString());
     mSerializingExecutor.execute(() -> {
       try {
         if (mContext == null) {

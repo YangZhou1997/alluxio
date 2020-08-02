@@ -93,7 +93,7 @@ public final class UfsFileWriteHandler extends AbstractWriteHandler<UfsFileWrite
         context.getUfsResource().get()
             .setOwner(context.getRequest().getUfsPath(), createOptions.getOwner(),
                 createOptions.getGroup());
-        TRACELOG.info("UfsFileWriteHandler request={}", context.getRequest().toString());
+        TRACELOG.info("UfsFileWriteHandler request: {}", context.getRequest().toString());
       } catch (IOException e) {
         LOG.warn("Failed to update ownership for ufs path: {} owner: {} group: {} error: {}",
             context.getRequest().getUfsPath(), createOptions.getOwner(), createOptions.getGroup(),

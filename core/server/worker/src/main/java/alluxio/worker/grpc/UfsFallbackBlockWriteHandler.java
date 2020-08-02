@@ -112,7 +112,7 @@ public final class UfsFallbackBlockWriteHandler
   @Override
   protected void completeRequest(BlockWriteRequestContext context)
       throws Exception {
-    TRACELOG.info("UfsFallbackBlockWriteHandler request={}", context.getRequest().toString());    
+    TRACELOG.info("UfsFallbackBlockWriteHandler request: {}", context.getRequest().toString());    
     if (context.isWritingToLocal()) {
       mBlockWriteHandler.completeRequest(context);
     } else {

@@ -59,6 +59,7 @@ import java.util.concurrent.TimeUnit;
 public class DefaultBlockWorkerClient implements BlockWorkerClient {
   private static final Logger LOG =
       LoggerFactory.getLogger(DefaultBlockWorkerClient.class.getName());
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   private GrpcChannel mStreamingChannel;
   private GrpcChannel mRpcChannel;
@@ -149,6 +150,7 @@ public class DefaultBlockWorkerClient implements BlockWorkerClient {
 
   @Override
   public StreamObserver<WriteRequest> writeBlock(StreamObserver<WriteResponse> responseObserver) {
+    TRACELOG.info("DefaultBlockWorkerClient writeBlock: {}", responseObserver);
     if (responseObserver instanceof DataMessageMarshallerProvider) {
       DataMessageMarshaller<WriteRequest> marshaller =
           ((DataMessageMarshallerProvider<WriteRequest, WriteResponse>) responseObserver)
@@ -167,6 +169,7 @@ public class DefaultBlockWorkerClient implements BlockWorkerClient {
 
   @Override
   public StreamObserver<ReadRequest> readBlock(StreamObserver<ReadResponse> responseObserver) {
+    TRACELOG.info("DefaultBlockWorkerClient readBlock: {}", responseObserver);
     if (responseObserver instanceof DataMessageMarshallerProvider) {
       DataMessageMarshaller<ReadResponse> marshaller =
           ((DataMessageMarshallerProvider<ReadRequest, ReadResponse>) responseObserver)
@@ -186,17 +189,20 @@ public class DefaultBlockWorkerClient implements BlockWorkerClient {
   @Override
   public StreamObserver<CreateLocalBlockRequest> createLocalBlock(
       StreamObserver<CreateLocalBlockResponse> responseObserver) {
+    TRACELOG.info("DefaultBlockWorkerClient createLocalBlock: {}", responseObserver);
     return mStreamingAsyncStub.createLocalBlock(responseObserver);
   }
 
   @Override
   public StreamObserver<OpenLocalBlockRequest> openLocalBlock(
       StreamObserver<OpenLocalBlockResponse> responseObserver) {
+    TRACELOG.info("DefaultBlockWorkerClient openLocalBlock: {}", responseObserver);
     return mStreamingAsyncStub.openLocalBlock(responseObserver);
   }
 
   @Override
   public RemoveBlockResponse removeBlock(final RemoveBlockRequest request) {
+    TRACELOG.info("DefaultBlockWorkerClient removeBlock request: {}", request.toString());
     return mRpcBlockingStub.withDeadlineAfter(mDataTimeoutMs, TimeUnit.MILLISECONDS)
         .removeBlock(request);
   }
@@ -204,6 +210,7 @@ public class DefaultBlockWorkerClient implements BlockWorkerClient {
   @Override
   public MoveBlockResponse moveBlock(MoveBlockRequest request) {
     // Default time out is 30 secs, may need to adjust this if block move takes longer
+    TRACELOG.info("DefaultBlockWorkerClient moveBlock request: {}", request.toString());
     return mRpcBlockingStub.withDeadlineAfter(mDataTimeoutMs, TimeUnit.MILLISECONDS)
         .moveBlock(request);
   }
@@ -211,12 +218,14 @@ public class DefaultBlockWorkerClient implements BlockWorkerClient {
   @Override
   public ClearMetricsResponse clearMetrics(ClearMetricsRequest request) {
     // Default time out is 30 secs, may need to adjust this if metrics clear takes longer
+    TRACELOG.info("DefaultBlockWorkerClient clearMetrics request: {}", request.toString());
     return mRpcBlockingStub.withDeadlineAfter(mDataTimeoutMs, TimeUnit.MILLISECONDS)
         .clearMetrics(request);
   }
 
   @Override
   public void asyncCache(final AsyncCacheRequest request) {
+    TRACELOG.info("DefaultBlockWorkerClient asyncCache request: {}", request.toString());
     mRpcAsyncStub.withDeadlineAfter(mDataTimeoutMs, TimeUnit.MILLISECONDS)
         .asyncCache(request, new StreamObserver<AsyncCacheResponse>() {
           @Override

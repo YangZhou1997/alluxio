@@ -48,6 +48,7 @@ import javax.annotation.concurrent.ThreadSafe;
 @ThreadSafe
 public class AsyncCacheRequestManager {
   private static final Logger LOG = LoggerFactory.getLogger(AsyncCacheRequestManager.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   private final StorageTierAssoc mStorageTierAssoc = new WorkerStorageTierAssoc();
   /** Executor service for execute the async cache tasks. */
@@ -118,6 +119,9 @@ public class AsyncCacheRequestManager {
                 new InetSocketAddress(request.getSourceHost(), request.getSourcePort());
             result = cacheBlockFromRemoteWorker(
                     blockId, blockLength, sourceAddress, openUfsBlockOptions);
+          }
+          if(result){
+            TRACELOG.info("AsyncCacheRequestManager submitRequest request: {}", request.toString());              
           }
           LOG.debug("Result of async caching block {}: {}", blockId, result);
         } catch (Exception e) {

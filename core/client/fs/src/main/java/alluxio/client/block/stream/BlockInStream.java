@@ -48,6 +48,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 public class BlockInStream extends InputStream implements BoundedStream, Seekable,
     PositionedReadable {
   private static final Logger LOG = LoggerFactory.getLogger(BlockInStream.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   /** the source tracking where the block is from. */
   public enum BlockInStreamSource {
@@ -102,6 +103,7 @@ public class BlockInStream extends InputStream implements BoundedStream, Seekabl
 
     long blockId = info.getBlockId();
     long blockSize = info.getLength();
+    TRACELOG.info("BlockInStream create: {} {} {}", info.toString(), dataSource.toString(), dataSourceType.toString());
 
     // Construct the partial read request
     ReadRequest.Builder builder =

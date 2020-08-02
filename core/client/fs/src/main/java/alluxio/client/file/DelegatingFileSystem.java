@@ -43,12 +43,15 @@ import alluxio.wire.SyncPointInfo;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * A wrapper of a FileSystem instance.
  */
 public class DelegatingFileSystem implements FileSystem {
   protected final FileSystem mDelegatedFileSystem;
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   /**
    * Wraps a file system instance to forward messages.
@@ -67,12 +70,14 @@ public class DelegatingFileSystem implements FileSystem {
   @Override
   public void createDirectory(AlluxioURI path, CreateDirectoryPOptions options)
       throws FileAlreadyExistsException, InvalidPathException, IOException, AlluxioException {
+    TRACELOG.info("DelegatingFileSystem createDirectory: {}", path.toString());
     mDelegatedFileSystem.createDirectory(path, options);
   }
 
   @Override
   public FileOutStream createFile(AlluxioURI path, CreateFilePOptions options)
       throws FileAlreadyExistsException, InvalidPathException, IOException, AlluxioException {
+    TRACELOG.info("DelegatingFileSystem createFile: {}", path.toString());
     return mDelegatedFileSystem.createFile(path, options);
   }
 
@@ -143,6 +148,7 @@ public class DelegatingFileSystem implements FileSystem {
   public FileInStream openFile(AlluxioURI path, OpenFilePOptions options)
       throws FileDoesNotExistException, OpenDirectoryException, FileIncompleteException,
       IOException, AlluxioException {
+    TRACELOG.info("DelegatingFileSystem openFile: {}", path.toString());
     return mDelegatedFileSystem.openFile(path, options);
   }
 
@@ -150,6 +156,7 @@ public class DelegatingFileSystem implements FileSystem {
   public FileInStream openFile(URIStatus status, OpenFilePOptions options)
       throws FileDoesNotExistException, OpenDirectoryException, FileIncompleteException,
       IOException, AlluxioException {
+    TRACELOG.info("DelegatingFileSystem openFile: {}", status.getPath().toString());
     return mDelegatedFileSystem.openFile(status, options);
   }
 

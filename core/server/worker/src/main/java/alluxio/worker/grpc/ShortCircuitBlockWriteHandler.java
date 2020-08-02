@@ -41,6 +41,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 class ShortCircuitBlockWriteHandler implements StreamObserver<CreateLocalBlockRequest> {
   private static final Logger LOG =
       LoggerFactory.getLogger(ShortCircuitBlockWriteHandler.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   private static final long INVALID_SESSION_ID = -1;
 
@@ -75,6 +76,7 @@ class ShortCircuitBlockWriteHandler implements StreamObserver<CreateLocalBlockRe
    */
   @Override
   public void onNext(CreateLocalBlockRequest request) {
+    TRACELOG.info("ShortCircuitBlockWriteHandler request: {}", request.toString());
     final String methodName = request.getOnlyReserveSpace() ? "ReserveSpace" : "CreateBlock";
     RpcUtils.streamingRPCAndLog(LOG, new RpcUtils.StreamingRpcCallable<CreateLocalBlockResponse>() {
       @Override

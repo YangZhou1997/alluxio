@@ -65,6 +65,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 @NotThreadSafe
 public class AlluxioFileInStream extends FileInStream {
   private static final Logger LOG = LoggerFactory.getLogger(AlluxioFileInStream.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   private Supplier<RetryPolicy> mRetryPolicySupplier;
   private final URIStatus mStatus;
@@ -98,6 +99,7 @@ public class AlluxioFileInStream extends FileInStream {
 
   protected AlluxioFileInStream(URIStatus status, InStreamOptions options,
       FileSystemContext context) {
+    TRACELOG.info("AlluxioFileInStream: {} {}", status.getPath(), status.getBlockIds().toString());
     mCloser = Closer.create();
     // Acquire a resource to block FileSystemContext reinitialization, this needs to be done before
     // using mContext.

@@ -40,6 +40,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 @NotThreadSafe
 public class BlockOutStream extends OutputStream implements BoundedStream, Cancelable {
   private static final Logger LOG = LoggerFactory.getLogger(BlockOutStream.class);
+  private static final Logger TRACELOG = LoggerFactory.getLogger("blocktracesLogger");
 
   private final Closer mCloser;
   /** Length of the stream. If unknown, set to Long.MAX_VALUE. */
@@ -62,6 +63,7 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
    */
   public static BlockOutStream create(FileSystemContext context, long blockId, long blockSize,
       WorkerNetAddress address, OutStreamOptions options) throws IOException {
+    TRACELOG.info("BlockOutStream create: {} {} {}", blockId, blockSize, address.toString());
     DataWriter dataWriter =
         DataWriter.Factory.create(context, blockId, blockSize, address, options);
     return new BlockOutStream(dataWriter, blockSize, address);
@@ -109,6 +111,7 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
   public static BlockOutStream createReplicatedBlockOutStream(FileSystemContext context,
       long blockId, long blockSize, java.util.List<WorkerNetAddress> workerNetAddresses,
       OutStreamOptions options) throws IOException {
+    TRACELOG.info("BlockOutStream create: {} {} {}", blockId, blockSize, workerNetAddresses.toString());
     List<DataWriter> dataWriters = new ArrayList<>();
     for (WorkerNetAddress address: workerNetAddresses) {
       DataWriter dataWriter =
