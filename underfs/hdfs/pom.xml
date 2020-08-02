@@ -46,6 +46,13 @@
       <scope>provided</scope>
     </dependency>
 
+    <dependency>
+      <groupId>org.alluxio</groupId>
+      <artifactId>alluxio-core-client-hdfs</artifactId>
+      <version>${project.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
     <!-- Internal test dependencies -->
     <dependency>
       <groupId>org.alluxio</groupId>

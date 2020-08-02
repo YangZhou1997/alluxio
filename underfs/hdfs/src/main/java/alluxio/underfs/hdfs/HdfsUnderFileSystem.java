@@ -780,7 +780,10 @@ public class HdfsUnderFileSystem extends ConsistentUnderFileSystem
   private FileSystem getFs() throws IOException {
     try {
       // TODO(gpang): handle different users
-      return mUserFs.get(HDFS_USER);
+    //   if(mUserFs.get(HDFS_USER) instanceof alluxio.hadoop.FileSystem ){
+    //     return (FileSystem)mUserFs.get(HDFS_USER);
+    //   }
+      return (FileSystem)mUserFs.get(HDFS_USER);
     } catch (ExecutionException e) {
       throw new IOException("Failed get FileSystem for " + mUri, e.getCause());
     }
