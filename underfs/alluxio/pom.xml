@@ -17,9 +17,9 @@
     <artifactId>alluxio-underfs</artifactId>
     <version>2.2.1</version>
   </parent>
-  <artifactId>alluxio-underfs-hdfs</artifactId>
-  <name>Alluxio Under File System - HDFS</name>
-  <description>HDFS Under File System implementation</description>
+  <artifactId>alluxio-underfs-alluxio</artifactId>
+  <name>Alluxio Under File System - ALLUXIO</name>
+  <description>ALLUXIO Under File System implementation</description>
 
   <properties>
     <!-- The following paths need to be defined here as well as in the parent pom so that mvn can -->
@@ -42,6 +42,13 @@
     <dependency>
       <groupId>org.alluxio</groupId>
       <artifactId>alluxio-core-common</artifactId>
+      <version>${project.version}</version>
+      <scope>provided</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.alluxio</groupId>
+      <artifactId>alluxio-core-client-hdfs</artifactId>
       <version>${project.version}</version>
       <scope>provided</scope>
     </dependency>

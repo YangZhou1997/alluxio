@@ -70,3 +70,5 @@ dependency-reduced-pom.xml
 target/
 tests.log*
 **/.factorypath
+**/*.class
+**/bin/

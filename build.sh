@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
 source ~/.profile
-mvn clean install -Dlicense.skip=true -Phadoop-2 -Dhadoop.version=2.8.5 -DskipTests -Dcheckstyle.skip
+# remove .class .project .settings
+mvn eclipse:clean
+mvn clean install -Dlicense.skip=true -Phadoop-2 -Dhadoop.version=2.8.5 -DskipTests -Dcheckstyle.skip -pl core,job,shaded,underfs
+
+# -rf :alluxio-underfs-hdfs
 cd ~/bigdata-conf/ && ./sync_conf.sh
 
 alluxio-stop.sh all
