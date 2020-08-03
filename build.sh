@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 source ~/.profile
+# remove .class .project .settings
+mvn eclipse:clean
 mvn clean install -Dlicense.skip=true -Phadoop-2 -Dhadoop.version=2.8.5 -DskipTests -Dcheckstyle.skip
 cd ~/bigdata-conf/ && ./sync_conf.sh
 
