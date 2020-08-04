@@ -48,8 +48,14 @@
 
     <dependency>
       <groupId>org.alluxio</groupId>
-      <artifactId>alluxio-core-client-hdfs</artifactId>
+      <artifactId>alluxio-shaded-client</artifactId>
       <version>${project.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+               <artifactId>hadoop-client</artifactId>
+            </exclusion> 
+        </exclusions>
       <scope>provided</scope>
     </dependency>
 
@@ -104,6 +110,13 @@
           <groupId>org.alluxio</groupId>
           <artifactId>alluxio-shaded-hadoop</artifactId>
           <version>${ufs.hadoop.version}</version>
+          <exclusions>
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+               <artifactId>hadoop-common</artifactId>
+            </exclusion> 
+          </exclusions>
+          <scope>provided</scope>
         </dependency>
       </dependencies>
     </profile>

@@ -139,7 +139,7 @@ public class AlluxioUnderFileSystem extends ConsistentUnderFileSystem implements
         // UserGroupInformation.setConfiguration(hdfsConf) will trigger service loading.
         // Stash the classloader to prevent service loading throwing exception due to
         // classloader mismatch.
-        // ClassLoader currentClassLoader = Thread.currentThread().getContextClassLoader();
+        ClassLoader currentClassLoader = Thread.currentThread().getContextClassLoader();
         try {
             // Thread.currentThread().setContextClassLoader(hdfsConf.getClassLoader());
             // Set Hadoop UGI configuration to ensure UGI can be initialized by the shaded
@@ -147,7 +147,7 @@ public class AlluxioUnderFileSystem extends ConsistentUnderFileSystem implements
             // group service.
             UserGroupInformation.setConfiguration(hdfsConf);
         } finally {
-            // Thread.currentThread().setContextClassLoader(currentClassLoader);
+            Thread.currentThread().setContextClassLoader(currentClassLoader);
         }
 
         mUserFs = CacheBuilder.newBuilder().build(new CacheLoader<String, AbstractFileSystem>() {
@@ -162,21 +162,22 @@ public class AlluxioUnderFileSystem extends ConsistentUnderFileSystem implements
                 // by two separate class loaders, an instance of the class from one loader
                 // cannot
                 // be recognized as implementing the interface from the other loader.
-                // ClassLoader previousClassLoader = Thread.currentThread().getContextClassLoader();
+                ClassLoader previousClassLoader = Thread.currentThread().getContextClassLoader();
                 try {
                     // Set the class loader to ensure FileSystem implementations are
                     // loaded by the same class loader to avoid ServerConfigurationError
                     // Thread.currentThread().setContextClassLoader(currentClassLoader);
                     // return (FileSystem) (path.getFileSystem(hdfsConf));
+                    
                     // LOG.info("hdfsConf.getClassLoader() " + hdfsConf.getClassLoader().toString());
                     // LOG.info("previousClassLoader " + previousClassLoader.toString());
                     // LOG.info("currentClassLoader " + currentClassLoader.toString());
 
-                    // Thread.currentThread().setContextClassLoader(previousClassLoader);
+                    Thread.currentThread().setContextClassLoader(hdfsConf.getClassLoader());
                     AbstractFileSystem fs = (AbstractFileSystem) (FileSystem.get(URI.create(ufsUri.toString()), hdfsConf));
                     return fs;
                 } finally {
-                    // Thread.currentThread().setContextClassLoader(previousClassLoader);
+                    Thread.currentThread().setContextClassLoader(previousClassLoader);
                 }
             }
         });
