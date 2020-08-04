@@ -45,66 +45,72 @@ public class SupportedAlluxioAclProvider implements AlluxioAclProvider {
   @Override
   public Pair<AccessControlList, DefaultAccessControlList> getAcl(AbstractFileSystem hdfs, String path)
       throws IOException {
-    AclStatus hdfsAcl;
-    Path filePath = new Path(path);
-    boolean isDir = hdfs.isDirectory(filePath);
-    try {
-      hdfsAcl = hdfs.getAclStatus(filePath);
-    } catch (AclException e) {
-      // When dfs.namenode.acls.enabled is false, getAclStatus throws AclException.
-      return new Pair<>(null, null);
-    }
-    AccessControlList acl = new AccessControlList();
-    DefaultAccessControlList defaultAcl = new DefaultAccessControlList();
+    // alluxio fs does not support acl;
+    return new Pair<>(null, null);
 
-    acl.setOwningUser(hdfsAcl.getOwner());
-    acl.setOwningGroup(hdfsAcl.getGroup());
-    defaultAcl.setOwningUser(hdfsAcl.getOwner());
-    defaultAcl.setOwningGroup(hdfsAcl.getGroup());
-    for (AclEntry entry : hdfsAcl.getEntries()) {
-      alluxio.security.authorization.AclEntry.Builder builder =
-          new alluxio.security.authorization.AclEntry.Builder();
-      builder.setType(getAclEntryType(entry));
-      builder.setSubject(entry.getName() == null ? "" : entry.getName());
-      FsAction permission = entry.getPermission();
-      if (permission.implies(FsAction.READ)) {
-        builder.addAction(AclAction.READ);
-      } else if (permission.implies(FsAction.WRITE)) {
-        builder.addAction(AclAction.WRITE);
-      } else if (permission.implies(FsAction.EXECUTE)) {
-        builder.addAction(AclAction.EXECUTE);
-      }
-      if (entry.getScope().equals(AclEntryScope.ACCESS)) {
-        acl.setEntry(builder.build());
-      } else {
-        // default ACL, must be a directory
-        defaultAcl.setEntry(builder.build());
-      }
-    }
-    if (isDir) {
-      return new Pair<>(acl, defaultAcl);
-    } else {
-      // a null defaultACL indicates this is a file
-      return new Pair<>(acl, null);
-    }
+    // AclStatus hdfsAcl;
+    // Path filePath = new Path(path);
+    // boolean isDir = hdfs.isDirectory(filePath);
+    // try {
+    //   hdfsAcl = hdfs.getAclStatus(filePath);
+    // } catch (AclException e) {
+    //   // When dfs.namenode.acls.enabled is false, getAclStatus throws AclException.
+    //   return new Pair<>(null, null);
+    // }
+    // AccessControlList acl = new AccessControlList();
+    // DefaultAccessControlList defaultAcl = new DefaultAccessControlList();
+
+    // acl.setOwningUser(hdfsAcl.getOwner());
+    // acl.setOwningGroup(hdfsAcl.getGroup());
+    // defaultAcl.setOwningUser(hdfsAcl.getOwner());
+    // defaultAcl.setOwningGroup(hdfsAcl.getGroup());
+    // for (AclEntry entry : hdfsAcl.getEntries()) {
+    //   alluxio.security.authorization.AclEntry.Builder builder =
+    //       new alluxio.security.authorization.AclEntry.Builder();
+    //   builder.setType(getAclEntryType(entry));
+    //   builder.setSubject(entry.getName() == null ? "" : entry.getName());
+    //   FsAction permission = entry.getPermission();
+    //   if (permission.implies(FsAction.READ)) {
+    //     builder.addAction(AclAction.READ);
+    //   } else if (permission.implies(FsAction.WRITE)) {
+    //     builder.addAction(AclAction.WRITE);
+    //   } else if (permission.implies(FsAction.EXECUTE)) {
+    //     builder.addAction(AclAction.EXECUTE);
+    //   }
+    //   if (entry.getScope().equals(AclEntryScope.ACCESS)) {
+    //     acl.setEntry(builder.build());
+    //   } else {
+    //     // default ACL, must be a directory
+    //     defaultAcl.setEntry(builder.build());
+    //   }
+    // }
+    // if (isDir) {
+    //   return new Pair<>(acl, defaultAcl);
+    // } else {
+    //   // a null defaultACL indicates this is a file
+    //   return new Pair<>(acl, null);
+    // }
   }
 
   @Override
   public void setAclEntries(AbstractFileSystem hdfs, String path,
       List<alluxio.security.authorization.AclEntry> aclEntries) throws IOException {
-    // convert AccessControlList into hdfsAcl
-    List<AclEntry> aclSpecs = new ArrayList<>();
+    // alluxio fs does not support acl;
+    return;
 
-    for (alluxio.security.authorization.AclEntry entry : aclEntries) {
-      AclEntry hdfsAclEntry = getAlluxioAclEntry(entry);
-      aclSpecs.add(hdfsAclEntry);
-    }
-    // set hdfsAcl;
-    try {
-      hdfs.setAcl(new Path(path), aclSpecs);
-    } catch (UnsupportedOperationException e) {
-      // noop if hdfs does not support acl
-    }
+        // convert AccessControlList into hdfsAcl
+    // List<AclEntry> aclSpecs = new ArrayList<>();
+
+    // for (alluxio.security.authorization.AclEntry entry : aclEntries) {
+    //   AclEntry hdfsAclEntry = getAlluxioAclEntry(entry);
+    //   aclSpecs.add(hdfsAclEntry);
+    // }
+    // // set hdfsAcl;
+    // try {
+    //   hdfs.setAcl(new Path(path), aclSpecs);
+    // } catch (UnsupportedOperationException e) {
+    //   // noop if hdfs does not support acl
+    // }
   }
 
   private AclEntry getAlluxioAclEntry(alluxio.security.authorization.AclEntry entry)
