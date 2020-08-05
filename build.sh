@@ -21,7 +21,7 @@ alluxio format
 alluxio-start.sh all SudoMount
 
 # Enable writing data into alluxio: Two Ways to Keep Files in Sync Between Alluxio and HDFS
-alluxio fs ls -R -Dalluxio.user.file.metadata.sync.interval=0 /user/hive/warehouse/sqlres
+# alluxio fs ls -R -Dalluxio.user.file.metadata.sync.interval=0 /user/hive/warehouse/sqlres
 
 alluxio fs mkdir /mnt
 alluxio fs mount /mnt/alluxio1 alluxio://node3:19998/user/hive/warehouse

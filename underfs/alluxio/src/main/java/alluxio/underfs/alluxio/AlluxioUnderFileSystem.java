@@ -287,8 +287,8 @@ public class AlluxioUnderFileSystem extends ConsistentUnderFileSystem implements
                 // OutputStream outputStream = new AlluxioUnderFileOutputStream(
                 //         FileSystem.create(hdfs, new Path(path), new FsPermission(options.getMode().toShort())));
                 Path file = new Path(path);
-                hdfs.setPermission(file, new FsPermission(options.getMode().toShort()));
                 OutputStream outputStream = new AlluxioUnderFileOutputStream(hdfs.create(file));
+                hdfs.setPermission(file, new FsPermission(options.getMode().toShort()));
 
                 if (options.getAcl() != null) {
                     setAclEntries(path, options.getAcl().getEntries());
