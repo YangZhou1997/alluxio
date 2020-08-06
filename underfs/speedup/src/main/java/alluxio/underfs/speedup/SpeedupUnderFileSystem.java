@@ -178,19 +178,19 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 
   @Override
   public boolean deleteFile(String path) throws IOException {
-	  path = stripBase(stripPath(path));
-		AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
-		try {
-			if(!underFS.exists(newURI)) {
-				return false;
-			}
-			underFS.delete(newURI);
-			return true;
+	path = stripBase(stripPath(path));
+	AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+	try {
+		if(!underFS.exists(newURI)) {
+			return false;
 		}
-		catch(Exception e) {
-			LOG.error("Error when deleting [{}]", newURI.toString());
-			throw new IOException(e);
-		}
+		underFS.delete(newURI);
+		return true;
+	}
+	catch(Exception e) {
+		LOG.error("Error when deleting [{}]", newURI.toString());
+		throw new IOException(e);
+	}
   }
 
   @Override
@@ -245,12 +245,32 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 
   @Override
   public boolean isDirectory(String path) throws IOException {
-	  throw new UnsupportedOperationException("isDirectory is not supported");
+	path = stripBase(stripPath(path));
+	AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+	try {
+		boolean ret =  underFS.exists(newURI); 
+		LOG.info("isDirectory [{}]? {}", newURI.toString(), ret);
+		return ret;
+	}
+	catch(Exception e) {
+		LOG.error("Error when deleting [{}]", newURI.toString());
+		throw new IOException(e);
+	}
   }
 
   @Override
   public boolean isFile(String path) throws IOException {
-	  throw new UnsupportedOperationException("isFile is not supported");
+	  path = stripBase(stripPath(path));
+	  AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+	  try {
+		  boolean ret =  underFS.exists(newURI); 
+		  LOG.info("isFile [{}]? {}", newURI.toString(), ret);
+		  return ret;
+	  }
+	  catch(Exception e) {
+		  LOG.error("Error when deleting [{}]", newURI.toString());
+		throw new IOException(e);
+	  }
   }
 
   @Override
