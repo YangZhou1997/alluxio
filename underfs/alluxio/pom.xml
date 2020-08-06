@@ -54,7 +54,15 @@
           <exclusion>
             <groupId>org.apache.hadoop</groupId>
                <artifactId>hadoop-client</artifactId>
-            </exclusion> 
+          </exclusion> 
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+               <artifactId>hadoop-common</artifactId>
+          </exclusion> 
+          <exclusion>
+            <groupId>org.apache.hadoop</groupId>
+               <artifactId>hadoop-hdfs</artifactId>
+          </exclusion> 
         </exclusions>
       <scope>provided</scope>
     </dependency>
@@ -111,10 +119,18 @@
           <artifactId>alluxio-shaded-hadoop</artifactId>
           <version>${ufs.hadoop.version}</version>
           <exclusions>
-          <exclusion>
-            <groupId>org.apache.hadoop</groupId>
-               <artifactId>hadoop-common</artifactId>
-            </exclusion> 
+              <exclusion>
+                <groupId>org.apache.hadoop</groupId>
+                   <artifactId>hadoop-client</artifactId>
+              </exclusion> 
+              <exclusion>
+                <groupId>org.apache.hadoop</groupId>
+                   <artifactId>hadoop-common</artifactId>
+              </exclusion> 
+              <exclusion>
+                <groupId>org.apache.hadoop</groupId>
+                   <artifactId>hadoop-hdfs</artifactId>
+              </exclusion> 
           </exclusions>
           <scope>provided</scope>
         </dependency>

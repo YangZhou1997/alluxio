@@ -2,7 +2,6 @@
 
 source ~/.profile
 
-# rsync -r -l --exclude-from='exclude_me.txt' $HOME/alluxio_vscode/* $HOME/alluxio/
 rm -rf $HOME/alluxio
 cp -r $HOME/alluxio_vscode $HOME/alluxio
 
@@ -20,12 +19,15 @@ alluxio-stop.sh all
 alluxio format
 alluxio-start.sh all SudoMount
 
-# Enable writing data into alluxio: Two Ways to Keep Files in Sync Between Alluxio and HDFS
-# alluxio fs ls -R -Dalluxio.user.file.metadata.sync.interval=0 /user/hive/warehouse/sqlres
-
 alluxio fs mkdir /mnt
 alluxio fs mount /mnt/alluxio1 alluxio://node3:19998/user/hive/warehouse
 alluxio fs mkdir /mnt/alluxio1/sqlres
+
+# Enable writing data into alluxio: Two Ways to Keep Files in Sync Between Alluxio and HDFS
+# in local alluxio cluster
+# alluxio fs ls -R -Dalluxio.user.file.metadata.sync.interval=0 /mnt/alluxio1/sqlres
+# in remote alluxio cluster
+# alluxio fs ls -R -Dalluxio.user.file.metadata.sync.interval=0 /user/hive/warehouse/sqlres
 
 # you need to use ~/spark-tpc-ds-performance-test/hdfs2alluxio.py to transfer db loc in spark-sql
 # cd ~/spark-tpc-ds-performance-test && python hdfs2alluxio.py tpcds10 alluxio
