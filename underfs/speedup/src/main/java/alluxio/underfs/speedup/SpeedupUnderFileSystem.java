@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import alluxio.AlluxioURI;
 import alluxio.client.file.FileInStream;
 import alluxio.client.file.FileSystem;
+import alluxio.client.file.URIStatus;
 import alluxio.conf.InstancedConfiguration;
 import alluxio.conf.PropertyKey;
 import alluxio.underfs.AtomicFileOutputStreamCallback;
@@ -214,7 +215,18 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 
   @Override
   public UfsDirectoryStatus getDirectoryStatus(String path) throws IOException {
-    throw new UnsupportedOperationException("getDirectoryStatus is not supported");
+	  path = stripBase(stripPath(path));
+	  AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+	  try {
+		URIStatus status =  underFS.getStatus(newURI);
+		LOG.info("Getting status for [{}]", newURI);
+		UfsDirectoryStatus returnStatus = new UfsDirectoryStatus(status.getName(), status.getOwner(), status.getGroup(), (short)status.getMode(), status.getLastModificationTimeMs());
+		return returnStatus;
+	  }
+	  catch(Exception e) {
+		LOG.error("Error when checking status [{}]", newURI.toString());
+		throw new IOException(e);
+	  }
   }
 
   @Override
@@ -230,17 +242,47 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 
   @Override
   public UfsFileStatus getFileStatus(String path) throws IOException {
-	  throw new UnsupportedOperationException("getFileStatus is not supported");
+	  path = stripBase(stripPath(path));
+	  AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+	  try {
+		List<URIStatus> statuses = underFS.listStatus(newURI);
+		if(statuses.size() >= 1) {
+			UfsFileStatus returnStatus = new UfsFileStatus(statuses.get(0).getName(), 
+					"", statuses.get(0).getLength(), statuses.get(0).getLastModificationTimeMs(), 
+					statuses.get(0).getOwner(), statuses.get(0).getGroup(), (short)statuses.get(0).getMode());
+			return returnStatus;
+		}
+		LOG.error("Could not establish status...");
+		throw new IOException("Error when listing file status");
+		
+	  }
+	  catch(Exception e) {
+		LOG.error("Error when checking status [{}]", newURI.toString());
+		throw new IOException(e);
+	  }
   }
 
   @Override
   public long getSpace(String path, SpaceType type) throws IOException {
-	  throw new UnsupportedOperationException("getSpace is not supported");
+	  LOG.warn("Asking for free space, this is just a fixed constant here...");
+	  return 1000000000L;
   }
 
   @Override
   public UfsStatus getStatus(String path) throws IOException {
-	  throw new UnsupportedOperationException("getStatus is not supported");
+	  path = stripBase(stripPath(path));
+	  AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+	  try {
+		URIStatus stat = underFS.getStatus(newURI);
+		return new UfsFileStatus(stat.getName(), 
+				"", stat.getLength(), stat.getLastModificationTimeMs(), 
+				stat.getOwner(), stat.getGroup(), (short)stat.getMode());
+		
+	  }
+	  catch(Exception e) {
+		LOG.error("Error when checking status [{}]", newURI.toString());
+		throw new IOException(e);
+	  }
   }
 
   @Override
@@ -275,7 +317,24 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 
   @Override
   public UfsStatus[] listStatus(String path) throws IOException {
-	  throw new UnsupportedOperationException("listStatus is not supported");
+	  path = stripBase(stripPath(path));
+	  AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+	  try {
+		  List<URIStatus> all = underFS.listStatus(newURI);
+		  UfsStatus [] returnStatus = new UfsStatus[all.size()];
+		  int i = 0;
+		  for(URIStatus ss : all) {
+			  returnStatus[i] = new UfsFileStatus(ss.getName(), 
+						"", ss.getLength(), ss.getLastModificationTimeMs(), 
+						ss.getOwner(), ss.getGroup(), (short)ss.getMode());
+			  ++i;
+		  }
+		  return returnStatus;
+	  }
+	  catch(Exception e) {
+		  LOG.error("Error when deleting [{}]", newURI.toString());
+		throw new IOException(e);
+	  }
   }
 
   @Override
@@ -302,22 +361,24 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 
   @Override
   public boolean renameDirectory(String src, String dst) throws IOException {
-	  throw new UnsupportedOperationException("renameDirectory is not supported");
+	  LOG.warn("renameDirectory is not supported");
+	  return true;
   }
 
   @Override
   public boolean renameFile(String src, String dst) throws IOException {
-	  throw new UnsupportedOperationException("renameFile is not supported");
+	  LOG.warn("renameFile is not supported");
+	  return true;
   }
 
   @Override
   public void setOwner(String path, String user, String group) throws IOException {
-	  throw new UnsupportedOperationException("setOwner is not supported");
+	  LOG.warn("setOwner is not supported");
   }
 
   @Override
   public void setMode(String path, short mode) throws IOException {
-	  throw new UnsupportedOperationException("setMode is not supported");
+	  LOG.warn("setMode is not supported");
   }
 
   @Override
