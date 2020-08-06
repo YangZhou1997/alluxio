@@ -76,8 +76,13 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
     // add the configuration
     conf = InstancedConfiguration.defaults();
     for(PropertyKey key : ufsConf.keySet()) {
-    	conf.set(key, ufsConf.get(key));
-    	LOG.info("Setting property [{}]=[{}]", key.toString(), ufsConf.get(key));
+    	try {
+    		conf.set(key, ufsConf.get(key));
+    		LOG.info("Setting property [{}]=[{}]", key.toString(), ufsConf.get(key));
+    	}
+    	catch(Exception e) {
+    		LOG.warn("Missing value for configuration [{}]", key.toString());
+    	}
     }
     // also set the host
     conf.set(PropertyKey.MASTER_HOSTNAME, host);
