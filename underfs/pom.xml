@@ -34,6 +34,7 @@
     <module>wasb</module>
     <module>web</module>
     <module>ozone</module>
+    <module>speedup</module>
   </modules>
 
   <properties>
