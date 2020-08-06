@@ -67,9 +67,9 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
   public SpeedupUnderFileSystem(AlluxioURI uri, UnderFileSystemConfiguration ufsConf) {
     super(uri, ufsConf);
     // here, we will instantiate an alluxio client to connect
-    String host = ufsConf.get(SpeedupUnderFileSystemPropertyKey.SPEEDUP_HOST_UFS_PROPERTY);
-    int port = Integer.valueOf(ufsConf.get(SpeedupUnderFileSystemPropertyKey.SPEEDUP_PORT_UFS_PROPERTY));
-    base = ufsConf.get(SpeedupUnderFileSystemPropertyKey.SPEEDUP_BASE_UFS_PROPERTY);
+    String host = ufsConf.get(PropertyKey.SPEEDUP_HOST_UFS_PROPERTY);
+    int port = Integer.valueOf(ufsConf.get(PropertyKey.SPEEDUP_PORT_UFS_PROPERTY));
+    base = ufsConf.get(PropertyKey.SPEEDUP_BASE_UFS_PROPERTY);
     
     LOG.info("Mounting uri=[{}] with host=[{}], port=[{}], base=[{}]", uri.toString(), host, port, base);
     
