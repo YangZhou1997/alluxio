@@ -41,6 +41,8 @@ import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.List;
@@ -189,9 +191,20 @@ public final class PersistDefinition
     return null;
   }
 
-  // @cesar: This is where the persist job comes. Here, i will read and chunk. This is inneficient, since 
+  // @cesar: This is where the persist job comes. Here, i will read and chunk. This is inefficient, since 
   // i will need to materialize the file here and i dont like it, but ill do it to support an initial implementation
   
+  private File materializeAndSaveFile(AlluxioURI inURI, FileInStream file) throws IOException {
+	  String tmpId = Thread.currentThread().getId() + inURI.getName();
+	  File tmpFile = new File(tmpId);
+	  // now, read the file from the input stream
+	  FileOutputStream fos = new FileOutputStream(tmpFile);
+	  // write it to tmp storage
+	  long written = IOUtils.copyLarge(file, fos, new byte[8 * Constants.MB]);
+	  fos.close();
+	  return tmpFile;
+	  
+  }
   
   
   private void incrementPersistedMetric(AlluxioURI ufsMountPointUri, long bytes) {

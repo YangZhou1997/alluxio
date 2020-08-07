@@ -17,7 +17,7 @@ import alluxio.RestUtils;
 import alluxio.RuntimeConstants;
 import alluxio.web.ProxyWebServer;
 import alluxio.wire.AlluxioProxyInfo;
-
+import alluxio.wire.ChunkResponse;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
 
@@ -46,9 +46,11 @@ public final class AlluxioProxyRestServiceHandler {
 
   // endpoints
   public static final String GET_INFO = "info";
+  public static final String GET_CHUNK = "chunkstore";
 
   // queries
   public static final String QUERY_RAW_CONFIGURATION = "raw_configuration";
+  public static final String QUERY_GET_CHUNK = "get_chunk";
 
   private final ProxyProcess mProxyProcess;
 
@@ -91,6 +93,20 @@ public final class AlluxioProxyRestServiceHandler {
     }, ServerConfiguration.global());
   }
 
+  @GET
+  @Path(GET_CHUNK)
+  @ApiOperation(value = "Give a signature and get either the byte content or nothing",
+      response = alluxio.wire.ChunkResponse.class)
+  public Response getChunk(@QueryParam(QUERY_GET_CHUNK) final byte[] signature) {
+    return RestUtils.call(() -> {
+      ChunkResponse response = new ChunkResponse();
+      response.setSignature(signature);
+      response.setContent("bye bye ".getBytes());
+      return response;
+    }, ServerConfiguration.global());
+  }
+  
+  
   private Map<String, String> getConfigurationInternal(boolean raw) {
     return new TreeMap<>(ServerConfiguration
         .toMap(ConfigurationValueOptions.defaults().useDisplayValue(true).useRawValue(raw)));
