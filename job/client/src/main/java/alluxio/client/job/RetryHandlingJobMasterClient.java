@@ -129,8 +129,10 @@ public final class RetryHandlingJobMasterClient extends AbstractMasterClient
     return result;
   }
 
+  // @cesar: This is where persis jobs end
   @Override
   public long run(final JobConfig jobConfig) throws IOException {
+	  
     final ByteString jobConfigStr = ByteString.copyFrom(SerializationUtils.serialize(jobConfig));
     return retryRPC(
         () -> mClient.run(RunPRequest.newBuilder().setJobConfig(jobConfigStr).build()).getJobId(),

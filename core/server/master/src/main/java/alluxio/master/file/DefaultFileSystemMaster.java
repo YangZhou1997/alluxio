@@ -1275,6 +1275,7 @@ public final class DefaultFileSystemMaster extends CoreMaster
       completeFileInternal(rpcContext, inodePath, context);
       // Schedule async persistence if requested.
       if (context.getOptions().hasAsyncPersistOptions()) {
+    	// @cesar: this one looks promising. Here they schedule when file is completed...  
         scheduleAsyncPersistenceInternal(inodePath, ScheduleAsyncPersistenceContext
             .create(context.getOptions().getAsyncPersistOptionsBuilder()), rpcContext);
       }
@@ -2277,6 +2278,7 @@ public final class DefaultFileSystemMaster extends CoreMaster
       long shouldPersistTime = srcInode.asFile().getShouldPersistTime();
       long persistenceWaitTime = shouldPersistTime == Constants.NO_AUTO_PERSIST ? 0
           : getPersistenceWaitTime(shouldPersistTime);
+      // @cesar: a persist request is being created
       mPersistRequests.put(srcInode.getId(), new alluxio.time.ExponentialTimer(
           ServerConfiguration.getMs(PropertyKey.MASTER_PERSISTENCE_INITIAL_INTERVAL_MS),
           ServerConfiguration.getMs(PropertyKey.MASTER_PERSISTENCE_MAX_INTERVAL_MS),
@@ -2303,6 +2305,7 @@ public final class DefaultFileSystemMaster extends CoreMaster
             long shouldPersistTime = childInode.asFile().getShouldPersistTime();
             long persistenceWaitTime = shouldPersistTime == Constants.NO_AUTO_PERSIST ? 0
                 : getPersistenceWaitTime(shouldPersistTime);
+            // @cesar: a persist request is being created for a directory
             mPersistRequests.put(childInode.getId(), new alluxio.time.ExponentialTimer(
                 ServerConfiguration.getMs(PropertyKey.MASTER_PERSISTENCE_INITIAL_INTERVAL_MS),
                 ServerConfiguration.getMs(PropertyKey.MASTER_PERSISTENCE_MAX_INTERVAL_MS),
@@ -3188,6 +3191,7 @@ public final class DefaultFileSystemMaster extends CoreMaster
     if (shouldPersistPath(inodePath.toString())) {
       mInodeTree.updateInode(rpcContext, UpdateInodeEntry.newBuilder().setId(inode.getId())
           .setPersistenceState(PersistenceState.TO_BE_PERSISTED.name()).build());
+      // @cesar: another persist job 
       mPersistRequests.put(inode.getId(),
           new alluxio.time.ExponentialTimer(
               ServerConfiguration.getMs(PropertyKey.MASTER_PERSISTENCE_INITIAL_INTERVAL_MS),
@@ -3691,6 +3695,7 @@ public final class DefaultFileSystemMaster extends CoreMaster
      *
      * @param fileId the file ID
      */
+    // @cesar: This is the method where persistence is scheduled...
     private void handleReady(long fileId) throws AlluxioException, IOException {
       alluxio.time.ExponentialTimer timer = mPersistRequests.get(fileId);
       // Lookup relevant file information.

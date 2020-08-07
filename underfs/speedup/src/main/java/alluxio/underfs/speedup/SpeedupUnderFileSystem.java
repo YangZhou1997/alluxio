@@ -439,8 +439,7 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 
   @Override
   public void setMode(String path, short mode) throws IOException {
-	// not sure how to implement this
-	throw new UnsupportedOperationException("Cannot set mode, not implemented");
+	// not sure how to implement this, so it will be a noop
   }
 
   @Override

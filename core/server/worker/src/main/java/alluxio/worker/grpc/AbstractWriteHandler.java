@@ -99,13 +99,13 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
    * @param writeRequest the request from the client
    */
   public void write(WriteRequest writeRequest) {
-    if (!tryAcquireSemaphore()) {
+	if (!tryAcquireSemaphore()) {
       return;
     }
     mSerializingExecutor.execute(() -> {
       try {
         if (mContext == null) {
-          LOG.debug("Received write request {}.", writeRequest);
+          LOG.info("Received write request {}.", writeRequest);
           try {
             mContext = createRequestContext(writeRequest);
           } catch (Exception e) {
