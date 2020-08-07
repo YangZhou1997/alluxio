@@ -190,7 +190,8 @@ public final class PersistDefinition
   }
 
   // @cesar: This is where the persist job comes. Here, i will read and chunk. This is inneficient, since 
-  // i will need to materialize the file here and i dont like it
+  // i will need to materialize the file here and i dont like it, but ill do it to support an initial implementation
+  
   
   
   private void incrementPersistedMetric(AlluxioURI ufsMountPointUri, long bytes) {
