@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.List;
 import javax.annotation.concurrent.ThreadSafe;
 import org.slf4j.Logger;
@@ -37,6 +38,7 @@ import alluxio.underfs.options.DeleteOptions;
 import alluxio.underfs.options.FileLocationOptions;
 import alluxio.underfs.options.MkdirsOptions;
 import alluxio.underfs.options.OpenOptions;
+import alluxio.grpc.SetAttributePOptions;
 
 /**
  * Speedup FS {@link UnderFileSystem} implementation.
@@ -231,13 +233,27 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 
   @Override
   public List<String> getFileLocations(String path) throws IOException {
-	  throw new UnsupportedOperationException("getFileLocations is not supported");
+	  path = stripBase(stripPath(path));
+	  AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+	  try {
+		LOG.info("Getting location for [{}]", newURI);
+		List<URIStatus> status =  underFS.listStatus(newURI);
+		List<String> names = new ArrayList<String>();
+		for(URIStatus st : status) {
+			names.add(st.getFileInfo().getName());
+		}
+		return names;
+	  }
+	  catch(Exception e) {
+		LOG.error("Error when checking location [{}]", newURI.toString());
+		throw new IOException(e);
+	  }
   }
 
   @Override
   public List<String> getFileLocations(String path, FileLocationOptions options)
       throws IOException {
-	  throw new UnsupportedOperationException("getFileLocations is not supported");
+	  return getFileLocations(path);
   }
 
   @Override
@@ -295,7 +311,7 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 		return ret;
 	}
 	catch(Exception e) {
-		LOG.error("Error when deleting [{}]", newURI.toString());
+		LOG.error("Error when checking [{}]", newURI.toString());
 		throw new IOException(e);
 	}
   }
@@ -310,7 +326,7 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 		  return ret;
 	  }
 	  catch(Exception e) {
-		  LOG.error("Error when deleting [{}]", newURI.toString());
+		  LOG.error("Error when checking [{}]", newURI.toString());
 		throw new IOException(e);
 	  }
   }
@@ -332,19 +348,29 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 		  return returnStatus;
 	  }
 	  catch(Exception e) {
-		  LOG.error("Error when deleting [{}]", newURI.toString());
+		  LOG.error("Error when checking [{}]", newURI.toString());
 		throw new IOException(e);
 	  }
   }
 
   @Override
   public boolean mkdirs(String path, MkdirsOptions options) throws IOException {
-	  throw new UnsupportedOperationException("mkdirs is not supported");
+	  path = stripBase(stripPath(path));
+	  // so here, i have the path of the file i am going to create
+	  AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+	  try {
+	    underFS.createDirectory(newURI);
+	    return true;
+	  }
+	  catch(Exception e) {
+    	LOG.error("Error when mkdirs", e);
+    	return false;
+	  }
   }
 
   @Override
   public InputStream open(String path, OpenOptions options) throws IOException {
-	  path = stripBase(stripPath(path));
+	path = stripBase(stripPath(path));
     // so here, i have the path of the file i am going to create
     AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
     try {
@@ -354,31 +380,67 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 	    return inn;
     }
     catch(Exception e) {
-    	LOG.error("Error when creating file", e);
+    	LOG.error("Error when opening file", e);
     	throw new IOException(e);
     }
   }
 
   @Override
   public boolean renameDirectory(String src, String dst) throws IOException {
-	  LOG.warn("renameDirectory is not supported");
-	  return true;
+    src = stripBase(stripPath(src));
+    dst = stripBase(stripPath(dst));
+    // so here, i have the path of the file i am going to create
+    AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + src);
+    AlluxioURI dURI = new AlluxioURI(alluxioBaseURI.toString() + dst);
+    try {
+	    LOG.info("Renaming [{}] to [{}]", newURI.toString(), dURI.toString());
+	    underFS.rename(newURI, dURI);
+	    return true;
+    }
+    catch(Exception e) {
+    	LOG.error("Error when renaming dir", e);
+    	return false;
+    }
   }
 
   @Override
   public boolean renameFile(String src, String dst) throws IOException {
-	  LOG.warn("renameFile is not supported");
-	  return true;
+	src = stripBase(stripPath(src));
+    dst = stripBase(stripPath(dst));
+    // so here, i have the path of the file i am going to create
+    AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + src);
+    AlluxioURI dURI = new AlluxioURI(alluxioBaseURI.toString() + dst);
+    try {
+	    LOG.info("Renaming [{}] to [{}]", newURI.toString(), dURI.toString());
+	    underFS.rename(newURI, dURI);
+	    return true;
+    }
+    catch(Exception e) {
+    	LOG.error("Error when renaming file", e);
+    	return false;
+    }
   }
 
   @Override
   public void setOwner(String path, String user, String group) throws IOException {
-	  LOG.warn("setOwner is not supported");
+	path = stripBase(stripPath(path));
+    // so here, i have the path of the file i am going to create
+    AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+    try {
+	    LOG.info("Setting owner for: [{}]", newURI.toString());
+	    SetAttributePOptions opts = SetAttributePOptions.newBuilder().setOwner(user).setGroup(group).build();
+	    underFS.setAttribute(newURI, opts);
+    }
+    catch(Exception e) {
+    	LOG.error("Error when creating file", e);
+    	throw new IOException(e);
+    }
   }
 
   @Override
   public void setMode(String path, short mode) throws IOException {
-	  LOG.warn("setMode is not supported");
+	// not sure how to implement this
+	throw new UnsupportedOperationException("Cannot set mode, not implemented");
   }
 
   @Override
