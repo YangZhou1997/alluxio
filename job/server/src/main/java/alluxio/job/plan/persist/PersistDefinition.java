@@ -105,6 +105,8 @@ public final class PersistDefinition
     AlluxioURI uri = new AlluxioURI(config.getFilePath());
     String ufsPath = config.getUfsPath();
 
+    LOG.info("@cesar: Received persist request: [{}]", config);
+    
     // check if the file is persisted in UFS and delete it, if we are overwriting it
     UfsManager.UfsClient ufsClient = context.getUfsManager().get(config.getMountId());
     try (CloseableResource<UnderFileSystem> ufsResource = ufsClient.acquireUfsResource()) {
@@ -187,6 +189,10 @@ public final class PersistDefinition
     return null;
   }
 
+  // @cesar: This is where the persist job comes. Here, i will read and chunk. This is inneficient, since 
+  // i will need to materialize the file here and i dont like it
+  
+  
   private void incrementPersistedMetric(AlluxioURI ufsMountPointUri, long bytes) {
     String mountPoint = MetricsSystem.escape(ufsMountPointUri);
     String metricName = String.format("BytesPersisted-Ufs:%s", mountPoint);

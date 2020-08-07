@@ -40,6 +40,10 @@ public class PersistConfig implements PlanConfig {
   private final boolean mOverwrite;
   /** Determines the UFS path to persist the file to. */
   private String mUfsPath;
+  /** File type */
+  private boolean columnarFile = false;
+  private boolean parquetFile = false;
+  private boolean orcFile = false;
 
   /**
    * Creates a new instance of {@link PersistConfig}.
@@ -57,6 +61,20 @@ public class PersistConfig implements PlanConfig {
     mMountId = Preconditions.checkNotNull(mountId, "The mount ID cannot be null");
     mOverwrite = overwrite;
     mUfsPath = Preconditions.checkNotNull(ufsPath, "The UFS path cannot be null");
+    // cesar: I added this here...
+    if(filePath.contains(".orc")) {
+    	columnarFile = true;
+    	orcFile = true;
+    }
+    else if (filePath.contains(".parquet")) {
+    	columnarFile = true;
+    	parquetFile = true;
+    }
+    else {
+    	columnarFile = false;
+    	orcFile = false;
+    	parquetFile = false;
+    }
   }
 
   @Override
@@ -92,7 +110,21 @@ public class PersistConfig implements PlanConfig {
     return mOverwrite;
   }
 
-  @Override
+  
+  
+  public boolean isColumnarFile() {
+	return columnarFile;
+  }
+
+  public boolean isParquetFile() {
+	return parquetFile;
+  }
+
+  public boolean isOrcFile() {
+	return orcFile;
+  }
+
+@Override
   public boolean equals(Object obj) {
     if (obj == null) {
       return false;
@@ -118,6 +150,7 @@ public class PersistConfig implements PlanConfig {
   @Override
   public String toString() {
     return MoreObjects.toStringHelper(this).add("filePath", mFilePath).add("mountId", mMountId)
-        .add("overwrite", mOverwrite).add("ufsPath", mUfsPath).toString();
+        .add("overwrite", mOverwrite).add("ufsPath", mUfsPath).add("collumnarFile", columnarFile)
+        .add("orcFile", orcFile).add("parquetFile", parquetFile).toString();
   }
 }
