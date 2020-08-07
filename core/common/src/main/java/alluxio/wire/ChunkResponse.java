@@ -1,5 +1,7 @@
 package alluxio.wire;
 
+import com.google.common.base.MoreObjects;
+
 public class ChunkResponse {
 
 	private byte [] signature;
@@ -19,7 +21,13 @@ public class ChunkResponse {
 		this.content = content;
 	}
 	
-	
+	@Override
+	  public String toString() {
+	    return MoreObjects.toStringHelper(this)
+	        .add("signature", signature)
+	        .add("content", content)
+	        .toString();
+	  }
 	
 	
 }

@@ -97,10 +97,10 @@ public final class AlluxioProxyRestServiceHandler {
   @Path(GET_CHUNK)
   @ApiOperation(value = "Give a signature and get either the byte content or nothing",
       response = alluxio.wire.ChunkResponse.class)
-  public Response getChunk(@QueryParam(QUERY_GET_CHUNK) final byte[] signature) {
+  public Response getChunk(@QueryParam(QUERY_GET_CHUNK) final String signature) {
     return RestUtils.call(() -> {
       ChunkResponse response = new ChunkResponse();
-      response.setSignature(signature);
+      response.setSignature(signature.getBytes());
       response.setContent("bye bye ".getBytes());
       return response;
     }, ServerConfiguration.global());
