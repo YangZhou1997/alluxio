@@ -19,6 +19,8 @@ alluxio-stop.sh all
 alluxio format
 alluxio-start.sh all SudoMount
 
+alluxio fs rm -R /mnt
+hdfs dfs -rm -r /mnt
 alluxio fs mkdir /mnt
 alluxio fs mount /mnt/alluxio1 alluxio://node3:19998/user/hive/warehouse
 alluxio fs mkdir /mnt/alluxio1/sqlres
