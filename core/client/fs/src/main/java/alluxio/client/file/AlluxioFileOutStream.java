@@ -120,6 +120,7 @@ public class AlluxioFileOutStream extends FileOutStream {
         mUnderStorageOutputStream = mCloser
             .register(UnderFileSystemFileOutStream.create(mContext, workerNetAddress, mOptions));
       }
+      LOG.info("@cesar: Can dedupfor path [{}] ? [{}]", path, mCurrentBlockOutStream.isDedupAble());
     } catch (Throwable t) {
       throw CommonUtils.closeAndRethrow(mCloser, t);
     }
@@ -308,7 +309,15 @@ public class AlluxioFileOutStream extends FileOutStream {
     }
   }
 
-  /**
+  
+  
+  public BlockOutStream getmCurrentBlockOutStream() {
+	return mCurrentBlockOutStream;
+  }
+
+
+
+/**
    * Class that contains metrics about FileOutStream.
    */
   @ThreadSafe

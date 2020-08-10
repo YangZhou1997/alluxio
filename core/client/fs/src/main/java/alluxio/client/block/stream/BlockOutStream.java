@@ -50,6 +50,7 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
   private final List<DataWriter> mDataWriters;
   private DataWriter mdataWriterWithDedup;
   private boolean mClosed;
+  private boolean dedupAble;
 
   /**
    * Creates an {@link BlockOutStream}.
@@ -87,6 +88,7 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
     if(dataWriter.canDedup()) {
     	LOG.info("@cesar: Building dedup-able data writer for address: [{}]:[{}]", address.getHost(), address.getRpcPort());
     	mdataWriterWithDedup = dataWriter;
+    	dedupAble = true;
     }
   }
 
@@ -317,6 +319,15 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
   private ByteBuf allocateBuffer() {
     return PooledByteBufAllocator.DEFAULT.buffer(mDataWriters.get(0).chunkSize());
   }
+
+  public DataWriter getMdataWriterWithDedup() {
+	return mdataWriterWithDedup;
+  }
+
+  public boolean isDedupAble() {
+	return dedupAble;
+  }
+  
   
   
   

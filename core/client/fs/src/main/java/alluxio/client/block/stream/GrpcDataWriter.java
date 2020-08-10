@@ -274,7 +274,6 @@ public final class GrpcDataWriter implements DataWriter {
   @Override
   public boolean queryForHash(byte[] signature) {
 	// query here...
-	
 	return false;
   }
 
