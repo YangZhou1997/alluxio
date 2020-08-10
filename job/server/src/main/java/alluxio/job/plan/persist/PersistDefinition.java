@@ -183,6 +183,7 @@ public final class PersistDefinition
         if(out instanceof AlluxioFileOutStream) {
         	LOG.info("@cesar: Got alluxio fileoutstream when writing [{}]", dstPath.toString());
         	AlluxioFileOutStream xx = (AlluxioFileOutStream)out;
+        	LOG.info("null here? [{}], there? [{}]", xx.getmCurrentBlockOutStream(), xx.getmCurrentBlockOutStream().getMdataWriterWithDedup());
         	boolean b1 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
         	boolean b2 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
         	boolean b3 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);

@@ -313,7 +313,10 @@ public class AlluxioFileOutStream extends FileOutStream {
 
   
   
-  public BlockOutStream getmCurrentBlockOutStream() {
+  public BlockOutStream getmCurrentBlockOutStream() throws IOException {
+	if(mCurrentBlockOutStream == null) {
+		getNextBlock();
+	}
 	return mCurrentBlockOutStream;
   }
 
