@@ -288,7 +288,7 @@ public class AlluxioFileOutStream extends FileOutStream {
       mShouldCacheCurrentBlock = true;
     }
     
-    LOG.info("@cesar: Can dedupfor path [{}] ? [{}]", mCurrentBlockOutStream.isDedupAble());
+    LOG.info("@cesar: Can dedupfor path ? [{}]", mCurrentBlockOutStream.isDedupAble());
   }
 
   private long getNextBlockId() throws IOException {

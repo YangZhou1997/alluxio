@@ -14,6 +14,7 @@ package alluxio.job.plan.persist;
 import alluxio.AlluxioURI;
 import alluxio.Constants;
 import alluxio.client.block.BlockWorkerInfo;
+import alluxio.client.file.AlluxioFileOutStream;
 import alluxio.client.file.FileInStream;
 import alluxio.client.file.URIStatus;
 import alluxio.collections.Pair;
@@ -179,6 +180,9 @@ public final class PersistDefinition
             ufs.createNonexistingFile(dstPath.toString(),
                 CreateOptions.defaults(ServerConfiguration.global()).setOwner(uriStatus.getOwner())
                 .setGroup(uriStatus.getGroup()).setMode(new Mode((short) uriStatus.getMode()))));
+        if(out instanceof AlluxioFileOutStream) {
+        	LOG.info("@cesar: Got alluxio fileoutstream when writing [{}]", dstPath.toString());
+        }
         URIStatus status = context.getFileSystem().getStatus(uri);
         List<AclEntry> allAcls = Stream.concat(status.getDefaultAcl().getEntries().stream(),
             status.getAcl().getEntries().stream()).collect(Collectors.toList());
