@@ -120,7 +120,7 @@ public class AlluxioFileOutStream extends FileOutStream {
         mUnderStorageOutputStream = mCloser
             .register(UnderFileSystemFileOutStream.create(mContext, workerNetAddress, mOptions));
       }
-      LOG.info("@cesar: Can dedupfor path [{}] ? [{}]", path, mCurrentBlockOutStream.isDedupAble());
+      
     } catch (Throwable t) {
       throw CommonUtils.closeAndRethrow(mCloser, t);
     }
@@ -287,6 +287,8 @@ public class AlluxioFileOutStream extends FileOutStream {
           mBlockStore.getOutStream(getNextBlockId(), mBlockSize, mOptions);
       mShouldCacheCurrentBlock = true;
     }
+    
+    LOG.info("@cesar: Can dedupfor path [{}] ? [{}]", mCurrentBlockOutStream.isDedupAble());
   }
 
   private long getNextBlockId() throws IOException {

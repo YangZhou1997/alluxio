@@ -273,7 +273,10 @@ public final class GrpcDataWriter implements DataWriter {
   // @cesar: This guy is going to be able to query for a hash signature
   @Override
   public boolean queryForHash(byte[] signature) {
-	// query here...
+	  if (mStream.isClosed() || mStream.isCanceled()) {
+	      return;
+	  }
+	  // query here...
 	return false;
   }
 
