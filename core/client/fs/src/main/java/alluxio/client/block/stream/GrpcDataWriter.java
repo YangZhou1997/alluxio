@@ -274,7 +274,7 @@ public final class GrpcDataWriter implements DataWriter {
   @Override
   public boolean queryForHash(byte[] signature) {
 	  if (mStream.isClosed() || mStream.isCanceled()) {
-	      return;
+	      return false;
 	  }
 	  // query here...
 	return false;
