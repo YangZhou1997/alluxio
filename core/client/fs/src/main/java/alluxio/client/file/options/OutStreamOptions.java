@@ -57,6 +57,7 @@ public final class OutStreamOptions {
   private String mUfsPath;
   private long mMountId;
   private String mMediumType;
+  private boolean speedupFile = false;
 
   /**
    * @param context Alluxio client context
@@ -113,6 +114,8 @@ public final class OutStreamOptions {
     if (options.hasWriteType()) {
       mWriteType = WriteType.fromProto(options.getWriteType());
     }
+    // @cesar: This goes here...
+    speedupFile = options.getSpeedupFile();
     try {
       mLocationPolicy = BlockLocationPolicy.Factory.create(
           alluxioConf.get(PropertyKey.USER_BLOCK_WRITE_LOCATION_POLICY), alluxioConf);
@@ -421,7 +424,15 @@ public final class OutStreamOptions {
     return this;
   }
 
-  @Override
+  public boolean isSpeedupFile() {
+	return speedupFile;
+  }
+
+  public void setSpeedupFile(boolean speedupFile) {
+	this.speedupFile = speedupFile;
+  }
+
+@Override
   public boolean equals(Object o) {
     if (this == o) {
       return true;

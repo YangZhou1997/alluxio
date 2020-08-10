@@ -198,4 +198,16 @@ public final class LocalFileDataWriter implements DataWriter {
         String.format("Invalid response for reserve request %s", request.toString()));
     mPosReserved += toReserve;
   }
+
+@Override
+public boolean queryForHash(byte[] signature) {
+	// TODO Auto-generated method stub
+	return false;
+}
+
+@Override
+public boolean canDedup() {
+	// TODO Auto-generated method stub
+	return false;
+}
 }

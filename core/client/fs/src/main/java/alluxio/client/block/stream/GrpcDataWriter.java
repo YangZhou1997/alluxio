@@ -76,6 +76,8 @@ public final class GrpcDataWriter implements DataWriter {
   private final GrpcBlockingStream<WriteRequest, WriteResponse> mStream;
   private final WriteRequestMarshaller mMarshaller;
 
+  
+  
   /**
    * The next pos to queue to the buffer.
    */
@@ -266,6 +268,19 @@ public final class GrpcDataWriter implements DataWriter {
   @Override
   public int chunkSize() {
     return (int) mChunkSize;
+  }
+
+  // @cesar: This guy is going to be able to query for a hash signature
+  @Override
+  public boolean queryForHash(byte[] signature) {
+	// query here...
+	
+	return false;
+  }
+
+  @Override
+  public boolean canDedup() {
+	return true;
   }
 }
 

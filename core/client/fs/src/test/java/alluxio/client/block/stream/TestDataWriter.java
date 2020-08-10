@@ -56,4 +56,16 @@ public class TestDataWriter implements DataWriter {
   public void close() {
     return;
   }
+
+@Override
+public boolean queryForHash(byte[] signature) {
+	// TODO Auto-generated method stub
+	return false;
+}
+
+@Override
+public boolean canDedup() {
+	// TODO Auto-generated method stub
+	return false;
+}
 }

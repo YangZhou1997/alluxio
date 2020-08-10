@@ -156,6 +156,8 @@ public class BaseFileSystem implements FileSystem {
       outStreamOptions.setUfsPath(status.getUfsPath());
       outStreamOptions.setMountId(status.getMountId());
       outStreamOptions.setAcl(status.getAcl());
+      LOG.info("Is this speedup file? [{}]", options.getSpeedupFile());
+      outStreamOptions.setSpeedupFile(options.getSpeedupFile());
       try {
         return new AlluxioFileOutStream(path, outStreamOptions, mFsContext);
       } catch (Exception e) {

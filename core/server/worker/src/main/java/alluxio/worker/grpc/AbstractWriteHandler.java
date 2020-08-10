@@ -129,7 +129,13 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
           } else {
             handleCommand(command, mContext);
           }
-        } else {
+        }
+        else if (writeRequest.hasWriteHashRequest()) {
+        	// @cesar: We were sent a hash, so we need to check it here...
+        	LOG.info("Receiving signature request...");
+        	// reply if we dont have it...
+        }
+        else {
           Preconditions.checkState(writeRequest.hasChunk(),
               "write request is missing data chunk in non-command message");
           ByteString data = writeRequest.getChunk().getData();

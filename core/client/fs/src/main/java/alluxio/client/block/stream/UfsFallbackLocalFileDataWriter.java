@@ -182,4 +182,16 @@ public final class UfsFallbackLocalFileDataWriter implements DataWriter {
       mGrpcDataWriter.close();
     }
   }
+
+@Override
+public boolean queryForHash(byte[] signature) {
+	// TODO Auto-generated method stub
+	return false;
+}
+
+@Override
+public boolean canDedup() {
+	// TODO Auto-generated method stub
+	return false;
+}
 }

@@ -25,7 +25,7 @@ service BlockWorker {
   rpc MoveBlock (MoveBlockRequest) returns (MoveBlockResponse);
 
   // TODO(lu) Move to metrics worker
-  rpc ClearMetrics (ClearMetricsRequest) returns (ClearMetricsResponse);
+  rpc ClearMetrics (ClearMetricsRequest) returns (ClearMetricsResponse); 
 }
 
 // The check request
@@ -92,12 +92,25 @@ message WriteRequestCommand {
   optional int64 space_to_reserve = 10;
 }
 
+// @cesar: This is a signature request, that contains a block
+// signature
+
+message WriteHashRequest {
+	enum Type {
+		ORC_STRIPE = 0;
+		ORC_FOOTER = 1;
+	}
+	optional Type type = 1;
+	optional bytes hash = 2;
+}
+
 // The write request.
 // next available id: 3
 message WriteRequest {
   oneof value {
     WriteRequestCommand command = 1;
     Chunk chunk = 2;
+    WriteHashRequest writeHashRequest = 3;
   }
 }
 

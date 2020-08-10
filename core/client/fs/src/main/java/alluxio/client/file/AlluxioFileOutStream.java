@@ -182,6 +182,7 @@ public class AlluxioFileOutStream extends FileOutStream {
       if (!mCanceled && (mUnderStorageType.isSyncPersist() || mAlluxioStorageType.isStore())) {
         try (CloseableResource<FileSystemMasterClient> masterClient = mContext
             .acquireMasterClientResource()) {
+          // @cesar: this is where the file is completed...	
           masterClient.get().completeFile(mUri, optionsBuilder.build());
         }
       }
@@ -267,6 +268,7 @@ public class AlluxioFileOutStream extends FileOutStream {
     if (mUnderStorageType.isSyncPersist()) {
       mUnderStorageOutputStream.write(b, off, len);
       Metrics.BYTES_WRITTEN_UFS.inc(len);
+      LOG.info("Sync persist writing {} bytes", len);
     }
     mBytesWritten += len;
   }

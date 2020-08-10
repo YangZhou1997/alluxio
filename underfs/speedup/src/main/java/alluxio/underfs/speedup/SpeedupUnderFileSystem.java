@@ -39,6 +39,8 @@ import alluxio.underfs.options.FileLocationOptions;
 import alluxio.underfs.options.MkdirsOptions;
 import alluxio.underfs.options.OpenOptions;
 import alluxio.grpc.SetAttributePOptions;
+import alluxio.grpc.CreateFilePOptions;
+
 
 /**
  * Speedup FS {@link UnderFileSystem} implementation.
@@ -122,44 +124,36 @@ public class SpeedupUnderFileSystem extends ConsistentUnderFileSystem
 	  LOG.warn("Close called, nothing to do");
   }
 
+  
+  private OutputStream internalCreate(String path, CreateOptions options) throws IOException {
+	  path = stripBase(stripPath(path));
+	    // so here, i have the path of the file i am going to create
+	    AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
+	    try {
+		    if(options.getCreateParent()) {
+		    	// create the parent
+		    	LOG.info("Creating parent directory [{}]", newURI.getParent());
+		    	underFS.createDirectory(newURI.getParent());
+		    }
+		    LOG.info("Getting output stream for path: [{}]", newURI.toString());
+		    // pass the options too
+		    CreateFilePOptions opts = CreateFilePOptions.newBuilder().setSpeedupFile(true).build();
+		    return underFS.createFile(newURI, opts);
+	    }
+	    catch(Exception e) {
+	    	LOG.error("Error when creating file", e);
+	    	throw new IOException(e);
+	    }
+  }
+  
   @Override
   public OutputStream create(String path, CreateOptions options) throws IOException {
-    path = stripBase(stripPath(path));
-    // so here, i have the path of the file i am going to create
-    AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
-    try {
-	    if(options.getCreateParent()) {
-	    	// create the parent
-	    	LOG.info("Creating parent directory [{}]", newURI.getParent());
-	    	underFS.createDirectory(newURI.getParent());
-	    }
-	    LOG.info("Getting output stream for path: [{}]", newURI.toString());
-	    return underFS.createFile(newURI);
-    }
-    catch(Exception e) {
-    	LOG.error("Error when creating file", e);
-    	throw new IOException(e);
-    }
+    return internalCreate(path, options);
   }
 
   @Override
   public OutputStream createDirect(String path, CreateOptions options) throws IOException {
-	path = stripBase(stripPath(path));
-    // so here, i have the path of the file i am going to create
-    AlluxioURI newURI = new AlluxioURI(alluxioBaseURI.toString() + path);
-    try {
-	    if(options.getCreateParent()) {
-	    	// create the parent
-	    	LOG.info("Creating parent directory [{}]", newURI.getParent());
-	    	underFS.createDirectory(newURI.getParent());
-	    }
-	    LOG.info("Getting output stream for path: [{}]", newURI.toString());
-	    return underFS.createFile(newURI);
-    }
-    catch(Exception e) {
-    	LOG.error("Error when creating file", e);
-    	throw new IOException(e);
-    }
+	  return internalCreate(path, options);
   }
 
   @Override

@@ -193,6 +193,7 @@ public final class PersistDefinition
 
   // @cesar: This is where the persist job comes. Here, i will read and chunk. This is inefficient, since 
   // i will need to materialize the file here and i dont like it, but ill do it to support an initial implementation
+ 
   
   private File materializeAndSaveFile(AlluxioURI inURI, FileInStream file) throws IOException {
 	  String tmpId = Thread.currentThread().getId() + inURI.getName();
@@ -203,7 +204,6 @@ public final class PersistDefinition
 	  long written = IOUtils.copyLarge(file, fos, new byte[8 * Constants.MB]);
 	  fos.close();
 	  return tmpFile;
-	  
   }
   
   

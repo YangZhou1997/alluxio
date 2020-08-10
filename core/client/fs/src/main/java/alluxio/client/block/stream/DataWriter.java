@@ -89,7 +89,7 @@ public interface DataWriter extends Closeable, Cancelable {
    *
    * @param chunk the chunk
    */
-  void writeChunk(ByteBuf chunk) throws IOException;
+  void writeChunk(ByteBuf chunk) throws IOException;  
 
   /**
    *  Flushes all the pending chunks.
@@ -105,4 +105,12 @@ public interface DataWriter extends Closeable, Cancelable {
    * @return the current pos which is the same as the totally number of bytes written so far
    */
   long pos();
+  
+  // @cesar: Ill add two methods here, i want this guy to be able to query for a signature
+  boolean queryForHash(byte[] signature);
+  
+  boolean canDedup();
+  
+  
+  
 }
