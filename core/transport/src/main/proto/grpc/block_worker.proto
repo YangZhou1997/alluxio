@@ -96,16 +96,12 @@ message WriteRequestCommand {
 // signature
 
 message WriteHashRequest {
-	enum Type {
-		ORC_STRIPE = 0;
-		ORC_FOOTER = 1;
-	}
-	optional Type type = 1;
-	optional bytes hash = 2;
+	optional bytes hash = 1;
+	optional int32 type = 2;
 }
 
 // The write request.
-// next available id: 3
+// next available id: 4
 message WriteRequest {
   oneof value {
     WriteRequestCommand command = 1;
@@ -119,7 +115,8 @@ message WriteRequest {
 message WriteResponse {
   optional int64 offset = 1;
   // Errors will be handled by standard gRPC stream APIs. 
-  // @cesar: This will be 1 when the data is there and -1 when its not.
+  // @cesar: The reply will be negative when the hash is not present,
+  // otherwise it will be positive...
 }
 
 // Request for caching a block asynchronously

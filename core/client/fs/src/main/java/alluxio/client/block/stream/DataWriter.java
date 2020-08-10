@@ -107,7 +107,7 @@ public interface DataWriter extends Closeable, Cancelable {
   long pos();
   
   // @cesar: Ill add two methods here, i want this guy to be able to query for a signature
-  boolean queryForHash(byte[] signature);
+  boolean queryForHash(byte[] signature, int type) throws IOException;
   
   boolean canDedup();
   

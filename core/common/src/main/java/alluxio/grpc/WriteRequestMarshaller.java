@@ -36,6 +36,11 @@ import javax.annotation.concurrent.NotThreadSafe;
 public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> {
   private static final int CHUNK_TAG = GrpcSerializationUtils.makeTag(
       WriteRequest.CHUNK_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
+  
+  private static final int HASH_TAG = GrpcSerializationUtils.makeTag(
+	      WriteRequest.WRITEHASHREQUEST_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
+  
+  
   /**
    * Creates a {@link WriteRequestMarshaller}.
    */
@@ -50,6 +55,13 @@ public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> 
       CodedOutputStream stream = CodedOutputStream.newInstance(command);
       message.writeTo(stream);
       return new ByteBuf[] { Unpooled.wrappedBuffer(command) };
+    }
+    // @cesar: Need to handle this too
+    else if(message.hasWriteHashRequest()) {
+    	byte[] hash = new byte[message.getSerializedSize()];
+        CodedOutputStream stream = CodedOutputStream.newInstance(hash);
+        message.writeTo(stream);
+        return new ByteBuf[] { Unpooled.wrappedBuffer(hash) };
     }
     DataBuffer chunkBuffer = pollBuffer(message);
     if (chunkBuffer == null) {
@@ -80,7 +92,13 @@ public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> 
       int tag = ProtoUtils.readRawVarint32(is);
       int messageSize = ProtoUtils.readRawVarint32(is);
       if (tag != CHUNK_TAG) {
-        return WriteRequest.newBuilder().setCommand(WriteRequestCommand.parseFrom(is)).build();
+    	// @cesar: I had to modify this here too
+    	if(tag != HASH_TAG) {  
+    		return WriteRequest.newBuilder().setCommand(WriteRequestCommand.parseFrom(is)).build();
+    	}
+    	else {
+    		return WriteRequest.newBuilder().setWriteHashRequest(WriteHashRequest.parseFrom(is)).build();
+    	}
       }
       Preconditions.checkState(messageSize == buffer.readableBytes());
       Preconditions.checkState(ProtoUtils.readRawVarint32(is) == GrpcSerializationUtils.makeTag(

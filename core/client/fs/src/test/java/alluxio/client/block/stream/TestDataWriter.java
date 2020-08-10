@@ -58,7 +58,7 @@ public class TestDataWriter implements DataWriter {
   }
 
 @Override
-public boolean queryForHash(byte[] signature) {
+public boolean queryForHash(byte[] signature, int type)  throws IOException {
 	// TODO Auto-generated method stub
 	return false;
 }

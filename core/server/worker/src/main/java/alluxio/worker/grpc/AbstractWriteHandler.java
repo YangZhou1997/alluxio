@@ -19,6 +19,7 @@ import alluxio.exception.status.InvalidArgumentException;
 import alluxio.grpc.WriteRequest;
 import alluxio.grpc.WriteRequestCommand;
 import alluxio.grpc.WriteResponse;
+import alluxio.grpc.WriteHashRequest;
 import alluxio.network.protocol.databuffer.DataBuffer;
 import alluxio.network.protocol.databuffer.NioDataBuffer;
 import alluxio.security.authentication.AuthenticatedUserInfo;
@@ -134,6 +135,11 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
         	// @cesar: We were sent a hash, so we need to check it here...
         	LOG.info("Receiving signature request...");
         	// reply if we dont have it...
+        	WriteHashRequest hashQuery = writeRequest.getWriteHashRequest();
+        	LOG.info("@cesar: Received a query for [{}]", hashQuery.getHash());
+        	// and reply        	
+        	mResponseObserver.onNext(
+        	        WriteResponse.newBuilder().setOffset(100).build());
         }
         else {
           Preconditions.checkState(writeRequest.hasChunk(),

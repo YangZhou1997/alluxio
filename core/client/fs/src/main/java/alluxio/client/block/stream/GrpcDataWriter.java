@@ -22,6 +22,7 @@ import alluxio.grpc.DataMessage;
 import alluxio.grpc.RequestType;
 import alluxio.grpc.WriteRequest;
 import alluxio.grpc.WriteRequestCommand;
+import alluxio.grpc.WriteHashRequest;
 import alluxio.grpc.WriteRequestMarshaller;
 import alluxio.grpc.WriteResponse;
 import alluxio.network.protocol.databuffer.NettyDataBuffer;
@@ -32,6 +33,7 @@ import alluxio.wire.WorkerNetAddress;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
+import com.google.protobuf.ByteString;
 import com.google.protobuf.UnsafeByteOperations;
 import io.netty.buffer.ByteBuf;
 import org.slf4j.Logger;
@@ -272,12 +274,19 @@ public final class GrpcDataWriter implements DataWriter {
 
   // @cesar: This guy is going to be able to query for a hash signature
   @Override
-  public boolean queryForHash(byte[] signature) {
+  public boolean queryForHash(byte[] signature, int type) throws IOException {
 	  if (mStream.isClosed() || mStream.isCanceled()) {
 	      return false;
 	  }
-	  // query here...
-	return false;
+	  // @cesar: This is just sending the thing and getting a response
+	  WriteRequest writeRequest = WriteRequest.newBuilder()
+		        .setWriteHashRequest(WriteHashRequest.newBuilder().setHash(ByteString.copyFrom(signature)).setType(type).build())
+		        .build();
+	  // send it here...
+	  mStream.send(writeRequest, mDataTimeoutMs * 100);
+	  // and await for response
+	  WriteResponse response = mStream.receive(mDataTimeoutMs * 100);
+	  return response.getOffset() > 0;
   }
 
   @Override

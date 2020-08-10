@@ -182,6 +182,11 @@ public final class PersistDefinition
                 .setGroup(uriStatus.getGroup()).setMode(new Mode((short) uriStatus.getMode()))));
         if(out instanceof AlluxioFileOutStream) {
         	LOG.info("@cesar: Got alluxio fileoutstream when writing [{}]", dstPath.toString());
+        	AlluxioFileOutStream xx = (AlluxioFileOutStream)out;
+        	boolean b1 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
+        	boolean b2 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
+        	boolean b3 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
+        	LOG.info("gotten [{}] && [{}] && [{}]", b1, b2, b3);
         }
         URIStatus status = context.getFileSystem().getStatus(uri);
         List<AclEntry> allAcls = Stream.concat(status.getDefaultAcl().getEntries().stream(),

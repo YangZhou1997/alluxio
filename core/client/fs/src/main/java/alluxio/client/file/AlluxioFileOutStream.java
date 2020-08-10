@@ -317,6 +317,8 @@ public class AlluxioFileOutStream extends FileOutStream {
 	return mCurrentBlockOutStream;
   }
 
+  
+  
 
 
 /**
