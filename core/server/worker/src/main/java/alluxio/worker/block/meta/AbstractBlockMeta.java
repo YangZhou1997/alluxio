@@ -12,6 +12,7 @@
 package alluxio.worker.block.meta;
 
 import alluxio.conf.ServerConfiguration;
+import alluxio.SpeedupConstants.FilePiece;
 import alluxio.conf.PropertyKey;
 import alluxio.util.io.PathUtils;
 import alluxio.worker.block.BlockStoreLocation;
@@ -40,6 +41,11 @@ public abstract class AbstractBlockMeta {
    * @param blockId the block id
    * @return temp file path
    */
+	
+  // @cesar: I will also store some extra metadata here
+  protected FilePiece type;
+  protected byte[] contentHash;
+	
   public static String tempPath(StorageDir dir, long sessionId, long blockId) {
     final String tmpDir = ServerConfiguration.get(PropertyKey.WORKER_DATA_TMP_FOLDER);
     final int subDirMax = ServerConfiguration.getInt(PropertyKey.WORKER_DATA_TMP_SUBDIR_MAX);
@@ -76,6 +82,14 @@ public abstract class AbstractBlockMeta {
     mDir = Preconditions.checkNotNull(dir, "dir");
   }
 
+  public AbstractBlockMeta(long blockId, StorageDir dir, FilePiece type, byte[] contentHash) {
+	    mBlockId = blockId;
+	    mDir = Preconditions.checkNotNull(dir, "dir");
+	    this.type = type;
+	    this.contentHash = contentHash;
+	  }
+  
+  
   /**
    * @return the block id
    */
@@ -107,4 +121,16 @@ public abstract class AbstractBlockMeta {
    * @return the block size
    */
   public abstract long getBlockSize();
+
+  public FilePiece getType() {
+	return type;
+  }
+
+  public byte[] getContentHash() {
+	return contentHash;
+  }
+  
+  
+  
+  
 }

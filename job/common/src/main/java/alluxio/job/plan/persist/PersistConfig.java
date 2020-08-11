@@ -40,7 +40,7 @@ public class PersistConfig implements PlanConfig {
   private final boolean mOverwrite;
   /** Determines the UFS path to persist the file to. */
   private String mUfsPath;
-  /** File type */
+  /** @cesar: File type */
   private boolean columnarFile = false;
   private boolean parquetFile = false;
   private boolean orcFile = false;

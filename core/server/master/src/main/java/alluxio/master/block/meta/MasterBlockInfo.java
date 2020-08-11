@@ -118,6 +118,7 @@ public final class MasterBlockInfo {
    * @return the number of workers this block is on
    */
   public int getNumLocations() {
+	  
     return mWorkerIdToAlias.size();
   }
 

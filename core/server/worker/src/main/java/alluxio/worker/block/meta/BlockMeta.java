@@ -15,12 +15,15 @@ import java.io.File;
 
 import javax.annotation.concurrent.ThreadSafe;
 
+import alluxio.SpeedupConstants.FilePiece;
+
 /**
  * Represents the metadata of a block in Alluxio managed storage.
  */
 @ThreadSafe
 public class BlockMeta extends AbstractBlockMeta {
   private final long mBlockSize;
+  
 
   /**
    * Creates a new instance of {@link BlockMeta}.
@@ -33,16 +36,24 @@ public class BlockMeta extends AbstractBlockMeta {
     super(blockId, dir);
     mBlockSize = blockSize;
   }
+  
+  public BlockMeta(long blockId, long blockSize, StorageDir dir, FilePiece type, byte[] contentHash) {
+	    super(blockId, dir, type, contentHash);
+	    mBlockSize = blockSize;
+  }
 
   /**
    * Creates a new instance of {@link BlockMeta} from {@link TempBlockMeta}.
    *
    * @param tempBlock uncommitted block metadata
    */
-  public BlockMeta(TempBlockMeta tempBlock) {
+  public BlockMeta(TempBlockMeta tempBlock) {  
     super(tempBlock.getBlockId(), tempBlock.getParentDir());
     // NOTE: TempBlockMeta must be committed after the actual data block file is moved.
     mBlockSize = new File(tempBlock.getCommitPath()).length();
+    // and set it here too
+    this.type = tempBlock.getType();
+    this.contentHash = tempBlock.getContentHash();
   }
 
   @Override

@@ -270,7 +270,7 @@ public class TieredBlockStore implements BlockStore {
   public long commitBlockLocked(long sessionId, long blockId, boolean pinOnCreate)
       throws BlockAlreadyExistsException, InvalidWorkerStateException, BlockDoesNotExistException,
       IOException {
-    LOG.debug("commitBlock: sessionId={}, blockId={}, pinOnCreate={}",
+    LOG.info("commitBlock: sessionId={}, blockId={}, pinOnCreate={}",
         sessionId, blockId, pinOnCreate);
     long lockId = mLockManager.lockBlock(sessionId, blockId, BlockLockType.WRITE);
     try {

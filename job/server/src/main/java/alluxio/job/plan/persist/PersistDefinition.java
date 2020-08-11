@@ -184,10 +184,19 @@ public final class PersistDefinition
         	LOG.info("@cesar: Got alluxio fileoutstream when writing [{}]", dstPath.toString());
         	AlluxioFileOutStream xx = (AlluxioFileOutStream)out;
         	LOG.info("null here? [{}], there? [{}]", xx.getmCurrentBlockOutStream(), xx.getmCurrentBlockOutStream().getMdataWriterWithDedup());
-        	boolean b1 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
-        	boolean b2 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
-        	boolean b3 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
-        	LOG.info("gotten [{}] && [{}] && [{}]", b1, b2, b3);
+        	//boolean b1 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
+        	//boolean b2 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
+        	//boolean b3 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
+        	//LOG.info("@cesar: gotten [{}] && [{}] && [{}]", b1, b2, b3);
+        	LOG.info("Will write 3 blocks!");
+        	String s1 = "block1";
+        	String s2 = "block2";
+        	String s3 = "block3";
+        	xx.writeSpecialChunk(s1.getBytes(), 0, s1.getBytes().length);
+        	xx.writeSpecialChunk(s2.getBytes(), 0, s2.getBytes().length);
+        	xx.writeSpecialChunk(s3.getBytes(), 0, s3.getBytes().length);
+        	xx.close();
+        	
         }
         URIStatus status = context.getFileSystem().getStatus(uri);
         List<AclEntry> allAcls = Stream.concat(status.getDefaultAcl().getEntries().stream(),
@@ -204,6 +213,8 @@ public final class PersistDefinition
   // @cesar: This is where the persist job comes. Here, i will read and chunk. This is inefficient, since 
   // i will need to materialize the file here and i dont like it, but ill do it to support an initial implementation
  
+  
+  
   
   private File materializeAndSaveFile(AlluxioURI inURI, FileInStream file) throws IOException {
 	  String tmpId = Thread.currentThread().getId() + inURI.getName();
