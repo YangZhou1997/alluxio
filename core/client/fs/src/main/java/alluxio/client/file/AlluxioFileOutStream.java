@@ -222,6 +222,7 @@ public class AlluxioFileOutStream extends FileOutStream {
   // @cesar: Just write and close...
   public void writeSpecialChunk(byte[] b, int off, int len) throws IOException {
 	    writeInternal(b, off, len);
+	    // @cesar: I am going to force this out
 	    getNextBlock(true);
   }
 
