@@ -222,7 +222,7 @@ public class AlluxioFileOutStream extends FileOutStream {
   // @cesar: Just write and close...
   public void writeSpecialChunk(byte[] b, int off, int len) throws IOException {
 	    writeInternal(b, off, len);
-	    getNextBlock();
+	    getNextBlock(true);
   }
 
   private void writeInternal(int b) throws IOException {
@@ -280,6 +280,27 @@ public class AlluxioFileOutStream extends FileOutStream {
     mBytesWritten += len;
   }
 
+  private void getNextBlock(boolean force) throws IOException {
+	  if(!force) {
+		  getNextBlock();
+		  return;
+	  }
+	  else {  
+	    if (mCurrentBlockOutStream != null) {
+	      mCurrentBlockOutStream.flush();
+	      mPreviousBlockOutStreams.add(mCurrentBlockOutStream);
+	    }
+	
+	    if (mAlluxioStorageType.isStore()) {
+	      mCurrentBlockOutStream =
+	          mBlockStore.getOutStream(getNextBlockId(), mBlockSize, mOptions);
+	      mShouldCacheCurrentBlock = true;
+	    }
+	}
+    
+    LOG.info("@cesar: Can dedupfor path ? [{}]", mCurrentBlockOutStream.isDedupAble());
+  }
+  
   private void getNextBlock() throws IOException {
     if (mCurrentBlockOutStream != null) {
       Preconditions.checkState(mCurrentBlockOutStream.remaining() <= 0,
