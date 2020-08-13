@@ -34,7 +34,11 @@ import javax.annotation.concurrent.NotThreadSafe;
  */
 @NotThreadSafe
 public class ReadResponseMarshaller extends DataMessageMarshaller<ReadResponse> {
-  /**
+    
+    private static final int HASH_TAG = GrpcSerializationUtils.makeTag(
+            ReadResponse.READHASHREQUEST_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
+    
+    /**
    * Creates a {@link ReadResponseMarshaller}.
    */
   public ReadResponseMarshaller() {
@@ -43,6 +47,13 @@ public class ReadResponseMarshaller extends DataMessageMarshaller<ReadResponse> 
 
   @Override
   protected ByteBuf[] serialize(ReadResponse message) throws IOException {
+    // @yang: Extract ReadHashRequest
+    if(message.hasReadHashRequest()) {
+    	byte[] hash = new byte[message.getSerializedSize()];
+        CodedOutputStream stream = CodedOutputStream.newInstance(hash);
+        message.writeTo(stream);
+        return new ByteBuf[] { Unpooled.wrappedBuffer(hash) };
+    }
     DataBuffer chunkBuffer = pollBuffer(message);
     if (chunkBuffer == null) {
       if (!message.hasChunk() || !message.getChunk().hasData()) {
@@ -69,9 +80,12 @@ public class ReadResponseMarshaller extends DataMessageMarshaller<ReadResponse> 
       return ReadResponse.getDefaultInstance();
     }
     try (InputStream is = ReadableBuffers.openStream(buffer, false)) {
-      Preconditions.checkState(ProtoUtils.readRawVarint32(is) == GrpcSerializationUtils.makeTag(
-          ReadResponse.CHUNK_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED));
+      int tag = ProtoUtils.readRawVarint32(is);
       int messageSize = ProtoUtils.readRawVarint32(is);
+      // @yang: extract ReadHashRequest. 
+      if(tag == HASH_TAG) {  
+	  	return ReadResponse.newBuilder().setReadHashRequest(ReadHashRequest.parseFrom(is)).build();
+	  }
       Preconditions.checkState(messageSize == buffer.readableBytes());
       Preconditions.checkState(ProtoUtils.readRawVarint32(is) == GrpcSerializationUtils.makeTag(
           Chunk.DATA_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED));

@@ -66,12 +66,28 @@ message ReadRequest {
 
   // Is position read to a small buffer
   optional bool position_short = 8;
+  // @yang, this means whether GrpcDataReader has the local chunk received before.
+  optional bool dedup_hit = 9;
+  // @yang, this means whether this is the start of this readrequest. 
+  optional bool first_read = 10;
 }
+
+// @yang: This is a signature response for reading, that contains a block
+// signature
+
+message ReadHashRequest {
+	optional bytes hash = 1;
+	optional int32 type = 2;
+}
+
 
 // The read response.
 // next available id: 2
 message ReadResponse {
-  optional Chunk chunk = 1;
+  oneof value {
+    Chunk chunk = 1;
+    ReadHashRequest ReadHashRequest = 2;
+  }
 }
 
 // The write request command.

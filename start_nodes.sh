@@ -3,6 +3,9 @@
 
 ## remove the logs
 rm -rf logs/*
+## stop and format all
+./bin/alluxio-stop.sh all
+alluxio format
 ## start the stuff
 ./bin/alluxio-start.sh -a master
 ./bin/alluxio-start.sh -a worker SudoMount

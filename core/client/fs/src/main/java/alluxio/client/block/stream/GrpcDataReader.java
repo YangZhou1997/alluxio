@@ -15,6 +15,7 @@ import alluxio.client.file.FileSystemContext;
 import alluxio.conf.AlluxioConfiguration;
 import alluxio.conf.PropertyKey;
 import alluxio.grpc.DataMessage;
+import alluxio.grpc.ReadHashRequest;
 import alluxio.grpc.ReadRequest;
 import alluxio.grpc.ReadResponse;
 import alluxio.grpc.ReadResponseMarshaller;
@@ -105,7 +106,8 @@ public final class GrpcDataReader implements DataReader {
         mStream = new GrpcBlockingStream<>(mClient.get()::readBlock, mReaderBufferSizeMessages,
             desc);
       }
-      mStream.send(mReadRequest, mDataTimeoutMs);
+      // @yang, this is the first time sending the read request. 
+      mStream.send(mReadRequest.toBuilder().setFirstRead(true).build(), mDataTimeoutMs);
     } catch (Exception e) {
       mClient.close();
       throw e;
@@ -129,6 +131,29 @@ public final class GrpcDataReader implements DataReader {
               .receiveDataMessage(mDataTimeoutMs);
       if (message != null) {
         response = message.getMessage();
+        if(response.hasReadHashRequest()){
+            // @yang, we recevied a ReadHashRequest. 
+        	LOG.info("Receiving signature request...");
+        	// reply if we dont have it...
+            ReadHashRequest hashQuery = response.getReadHashRequest();
+            LOG.info("@yang: Received a query for [{}]", hashQuery.getHash());
+            
+            // and reply false by default, 
+            boolean dedup_hit = false;
+            if(dedup_hit){
+                // we assume 4096 chunk size in dedup by default. 
+                // the real OffsetReceived should be come from the queried chunk for this signature. 
+                mStream.send(mReadRequest.toBuilder().setDedupHit(true).build());
+                // the buffer should come from local chunk store. 
+                ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
+                return new NioDataBuffer(byteBuffer, byteBuffer.remaining());
+            }
+            else{
+                mStream.send(mReadRequest.toBuilder().setDedupHit(false).build());
+                // we should read the next ReadResponse which must contain the real chunk; 
+                return readChunk();
+            }
+        }
         buffer = message.getBuffer();
         if (buffer == null && response.hasChunk() && response.getChunk().hasData()) {
           // falls back to use chunk message for compatibility

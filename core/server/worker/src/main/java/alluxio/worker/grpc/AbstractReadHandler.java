@@ -17,6 +17,7 @@ import alluxio.exception.status.AlluxioStatusException;
 import alluxio.exception.status.InvalidArgumentException;
 import alluxio.grpc.Chunk;
 import alluxio.grpc.DataMessage;
+import alluxio.grpc.ReadHashRequest;
 import alluxio.grpc.ReadResponse;
 import alluxio.network.protocol.databuffer.DataBuffer;
 import alluxio.resource.LockResource;
@@ -27,6 +28,7 @@ import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
 import com.google.common.base.Preconditions;
 import com.google.protobuf.UnsafeByteOperations;
+import com.google.protobuf.ByteString;
 import io.grpc.Status;
 import io.grpc.StatusException;
 import io.grpc.StatusRuntimeException;
@@ -116,6 +118,22 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
     // validation msg as validation may require to update error in context.
     LOG.debug("Received read request {}.", request);
     try (LockResource lr = new LockResource(mLock)) {
+      if(request.hasFirstRead()){
+            // @yang, get the signature
+            byte[] signature = "deadbeef".getBytes();
+            int type = 0;
+            ReadResponse readResponse = ReadResponse.newBuilder()
+		        .setReadHashRequest(ReadHashRequest.newBuilder().setHash(ByteString.copyFrom(signature)).setType(type).build())
+		        .build();
+            mResponseObserver.onNext(readResponse);
+            return;
+      }
+      if (request.hasDedupHit()){
+          if(request.getDedupHit()){
+            // @yang, dedup succeeds, we do not need to create a data reader. 
+            return;
+          }
+        } 
       if (request.hasOffsetReceived()) {
         mContext.setPosReceived(request.getOffsetReceived());
         if (!tooManyPendingChunks()) {
