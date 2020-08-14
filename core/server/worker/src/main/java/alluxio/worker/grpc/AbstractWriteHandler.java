@@ -185,20 +185,8 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
           ByteString data = writeRequest.getChunk().getData();
           Preconditions.checkState(data != null && data.size() > 0,
               "invalid data size from write request message");
-          // @cesar: we need to check if this message is dedupable..
-          if(writeRequest.getChunk().hasDedup()) {  
-	          if(writeRequest.getChunk().getDedup()) {
-	        	  LOG.info("@cesar: Will store this chunk!");
-	        	  handleDedupStore(data.toByteArray());
-	          }
-	          else {
-	        	  LOG.info("@cesar: Dedup is set but is false");
-	          }
-          }
-          else {
-        	  LOG.info("@cesar: This request has no dedup command...");
-          }
-          
+          // @cesar: we might need to do something here too...
+          LOG.info("@cesar: There might be an issue in this path...");
           writeData(new NioDataBuffer(data.asReadOnlyByteBuffer(), data.size()));
         
         }
@@ -237,7 +225,14 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
     mSerializingExecutor.execute(() -> {
       try {
     	  LOG.info("@cesar: Calling writeData");  
-    	 writeData(buffer);
+    	 if(request.hasChunk() && request.getChunk().getDedup()) {
+    		 LOG.info("@cesar: writing with dedup...");
+    		 writeDataWithDedup(buffer);
+    	 }
+    	 else {
+    		 LOG.info("@cesar: writing WITHOUT dedup...");
+    		 writeData(buffer);
+    	 }
       } finally {
         mSemaphore.release();
       }
@@ -345,6 +340,26 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
       buf.release();
     }
   }
+  
+  private void writeDataWithDedup(DataBuffer buf) {
+	    try {
+	      if (mContext.isDoneUnsafe() || mContext.getError() != null) {
+	        return;
+	      }
+	      LOG.info("@cesar: Calling writeDataWithDedup with size {}", buf.getLength());  
+	      int readableBytes = buf.readableBytes();
+	      mContext.setPos(mContext.getPos() + readableBytes);
+	      writeBuf(mContext, mResponseObserver, buf, mContext.getPos());
+	      incrementMetrics(readableBytes);
+	      handleDedupStore(buf.getReadOnlyByteBuffer().array());
+	    } catch (Exception e) {
+	      LOG.error("Failed to write data for request {}", mContext.getRequest(), e);
+	      Throwables.throwIfUnchecked(e);
+	      abort(new Error(AlluxioStatusException.fromCheckedException(e), true));
+	    } finally {
+	      buf.release();
+	    }
+	  }
 
   private void flush() {
     try {
