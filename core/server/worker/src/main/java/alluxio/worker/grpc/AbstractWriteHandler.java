@@ -38,6 +38,7 @@ import io.grpc.internal.SerializingExecutor;
 import io.grpc.stub.StreamObserver;
 import vmware.speedup.chunk.Chunk;
 import vmware.speedup.chunk.Hash;
+import vmware.speedup.common.HashingException;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -118,6 +119,18 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
 	  return null;
   }
   
+  private void handleDedupStore(byte[] content) {
+	  // @cesar: store
+	  try {
+		  DefaultBlockWorker.chunkStore.storeChunk(
+				  Chunk.build(DefaultBlockWorker.chunkStore.getHashWorkers().hashContent(content), content));
+	  }
+	  catch(HashingException e) {
+		  LOG.error("Exception when hashing", e);
+	  }
+	  
+  }
+  
   public void write(WriteRequest writeRequest) {
 	if (!tryAcquireSemaphore()) {
       return;
@@ -170,6 +183,19 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
           ByteString data = writeRequest.getChunk().getData();
           Preconditions.checkState(data != null && data.size() > 0,
               "invalid data size from write request message");
+          // @cesar: we need to check if this message is dedupable..
+          if(writeRequest.getChunk().hasDedup()) {  
+	          if(writeRequest.getChunk().getDedup()) {
+	        	  LOG.info("@cesar: Will store this chunk!");
+	        	  handleDedupStore(data.toByteArray());
+	          }
+	          else {
+	        	  LOG.info("@cesar: Dedup is set but is false");
+	          }
+          }
+          else {
+        	  LOG.info("@cesar: This request has no dedup command...");
+          }
           writeData(new NioDataBuffer(data.asReadOnlyByteBuffer(), data.size()));
         }
       } catch (Exception e) {

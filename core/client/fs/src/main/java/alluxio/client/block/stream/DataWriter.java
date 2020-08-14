@@ -90,6 +90,8 @@ public interface DataWriter extends Closeable, Cancelable {
    * @param chunk the chunk
    */
   void writeChunk(ByteBuf chunk) throws IOException;  
+  
+  void writeChunk(ByteBuf chunk, boolean force) throws IOException;  
 
   /**
    *  Flushes all the pending chunks.

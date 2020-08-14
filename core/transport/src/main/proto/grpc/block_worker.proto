@@ -35,9 +35,10 @@ message CheckRequest {}
 message CheckResponse {}
 
 // The data chunk.
-// next available id: 2
+// next available id: 3
 message Chunk {
   optional bytes data = 1;
+  optional bool dedup = 2;
 }
 
 // The read/write request type. It can either be an Alluxio block operation or a UFS file operation.

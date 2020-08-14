@@ -199,9 +199,9 @@ public final class PersistDefinition
         
         if(out instanceof AlluxioFileOutStream) {
         	LOG.info("@cesar: Got alluxio fileoutstream when writing [{}]", dstPath.toString());
-        	AlluxioFileOutStream xx = (AlluxioFileOutStream)out;
-        	BlockOutStream channel = xx.getmCurrentBlockOutStream();
-        	LOG.info("null here? [{}], there? [{}]", channel, xx.getmCurrentBlockOutStream().getMdataWriterWithDedup());
+        	AlluxioFileOutStream internalStream = (AlluxioFileOutStream)out;
+        	BlockOutStream channel = internalStream.getmCurrentBlockOutStream();
+        	LOG.info("null here? [{}], there? [{}]", channel, internalStream.getmCurrentBlockOutStream().getMdataWriterWithDedup());
         	// so we need to bring the whole file back
         	File materialized = materializeAndSaveFile(uri, in);
         	if(materialized != null) {
@@ -211,10 +211,11 @@ public final class PersistDefinition
         		while(iterator.hasNext()) {
         			Chunk nextChunk = iterator.next();
         			LOG.info("@cesar: Will query [{}]", Bytes.toHexString(nextChunk.getHash()));
-        			boolean shouldWrite = channel.getMdataWriterWithDedup().queryForHash(nextChunk.getHash(), 0);
-        			if(!shouldWrite) {
+        			boolean dedup = channel.getMdataWriterWithDedup().queryForHash(nextChunk.getHash(), 0);
+        			if(!dedup) {
         				LOG.info("@cesar: Chunk is not there, sending {} bytes", nextChunk.getContent().length);
         				out.write(nextChunk.getContent(), 0, nextChunk.getContent().length);
+        				channel.forceFlush();
         				bytesWritten += nextChunk.getContent().length;
         			}
         			else {

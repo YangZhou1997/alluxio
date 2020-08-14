@@ -273,27 +273,6 @@ public class AlluxioFileOutStream extends FileOutStream {
     }
     mBytesWritten += len;
   }
-
-  private void getNextBlock(boolean force) throws IOException {
-	  if(!force) {
-		  getNextBlock();
-		  return;
-	  }
-	  else {  
-	    if (mCurrentBlockOutStream != null) {
-	      mCurrentBlockOutStream.flush();
-	      mPreviousBlockOutStreams.add(mCurrentBlockOutStream);
-	    }
-	
-	    if (mAlluxioStorageType.isStore()) {
-	      mCurrentBlockOutStream =
-	          mBlockStore.getOutStream(getNextBlockId(), mBlockSize, mOptions);
-	      mShouldCacheCurrentBlock = true;
-	    }
-	}
-    
-    LOG.info("@cesar: Can dedupfor path ? [{}]", mCurrentBlockOutStream.isDedupAble());
-  }
   
   private void getNextBlock() throws IOException {
     if (mCurrentBlockOutStream != null) {

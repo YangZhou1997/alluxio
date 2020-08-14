@@ -148,7 +148,7 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
   @Override
   public void write(int b) throws IOException {
     Preconditions.checkState(remaining() > 0, PreconditionMessage.ERR_END_OF_BLOCK);
-    updateCurrentChunk(false);
+    updateCurrentChunk(false, false);
     mCurrentChunk.writeByte(b);
   }
 
@@ -164,13 +164,13 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
     }
 
     while (len > 0) {
-      updateCurrentChunk(false);
+      updateCurrentChunk(false, false);
       int toWrite = Math.min(len, mCurrentChunk.writableBytes());
       mCurrentChunk.writeBytes(b, off, toWrite);
       off += toWrite;
       len -= toWrite;
     }
-    updateCurrentChunk(false);
+    updateCurrentChunk(false, false);
   }
 
   /**
@@ -196,13 +196,13 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
     }
 
     while (len > 0) {
-      updateCurrentChunk(false);
+      updateCurrentChunk(false, false);
       int toWrite = Math.min(len, mCurrentChunk.writableBytes());
       mCurrentChunk.writeBytes(buf, off, toWrite);
       off += toWrite;
       len -= toWrite;
     }
-    updateCurrentChunk(false);
+    updateCurrentChunk(false, false);
   }
 
   @Override
@@ -210,7 +210,17 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
     if (mClosed) {
       return;
     }
-    updateCurrentChunk(true);
+    updateCurrentChunk(true, false);
+    for (DataWriter dataWriter : mDataWriters) {
+      dataWriter.flush();
+    }
+  }
+  
+  public void forceFlush() throws IOException {
+    if (mClosed) {
+      return;
+    }
+    updateCurrentChunk(true, true);
     for (DataWriter dataWriter : mDataWriters) {
       dataWriter.flush();
     }
@@ -246,7 +256,7 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
       return;
     }
     try {
-      updateCurrentChunk(true);
+      updateCurrentChunk(true, false);
     } catch (Throwable t) {
       throw mCloser.rethrow(t);
     } finally {
@@ -267,7 +277,7 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
    *
    * @param lastChunk if the current packet is the last packet
    */
-  private void updateCurrentChunk(boolean lastChunk) throws IOException {
+  private void updateCurrentChunk(boolean lastChunk, boolean forceFlush) throws IOException {
     // Early return for the most common case.
     if (mCurrentChunk != null && mCurrentChunk.writableBytes() > 0 && !lastChunk) {
       return;
@@ -280,12 +290,12 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
       return;
     }
 
-    if (mCurrentChunk.writableBytes() == 0 || lastChunk) {
+    if (forceFlush || mCurrentChunk.writableBytes() == 0 || lastChunk) {
       try {
-        if (mCurrentChunk.readableBytes() > 0) {
+        if (forceFlush || mCurrentChunk.readableBytes() > 0) {
           for (DataWriter dataWriter : mDataWriters) {
             mCurrentChunk.retain();
-            dataWriter.writeChunk(mCurrentChunk.duplicate());
+            dataWriter.writeChunk(mCurrentChunk.duplicate(), true);
           }
         } else {
           Preconditions.checkState(lastChunk);
