@@ -107,7 +107,7 @@ public class GrpcDataMessageBlockingStream<ReqT, ResT> extends GrpcBlockingStrea
   public void sendDataMessage(DataMessage<ReqT, DataBuffer> message, long timeoutMs)
       throws IOException {
     if (mRequestMarshaller != null) {
-      LOG.info("@cesar: Marshaling message here...");	
+      LOG.info("@cesar: Marshaling message here, type={}", message.getMessage().getClass().getName());	
       mRequestMarshaller.offerBuffer(message.getBuffer(), message.getMessage());
     }
     super.send(message.getMessage(), timeoutMs);

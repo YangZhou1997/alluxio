@@ -219,7 +219,10 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
    * @param buffer the data associated with the request
    */
   public void writeDataMessage(WriteRequest request, DataBuffer buffer) {
-    if (buffer == null) {
+	 LOG.info("@cesar: Calling writeDataMessage");  
+	 LOG.info(request.toString());
+	 if (buffer == null) {
+      	
       write(request);
       return;
     }
@@ -228,11 +231,13 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
     Preconditions.checkState(buffer.readableBytes() > 0,
         "invalid data size from write request message");
     if (!tryAcquireSemaphore()) {
+      LOG.info("@cesar: cannot aquire semaphore");  	
       return;
     }
     mSerializingExecutor.execute(() -> {
       try {
-        writeData(buffer);
+    	  LOG.info("@cesar: Calling writeData");  
+    	 writeData(buffer);
       } finally {
         mSemaphore.release();
       }
@@ -327,6 +332,7 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
       if (mContext.isDoneUnsafe() || mContext.getError() != null) {
         return;
       }
+      LOG.info("@cesar: Calling writeData with size {}", buf.getLength());  
       int readableBytes = buf.readableBytes();
       mContext.setPos(mContext.getPos() + readableBytes);
       writeBuf(mContext, mResponseObserver, buf, mContext.getPos());

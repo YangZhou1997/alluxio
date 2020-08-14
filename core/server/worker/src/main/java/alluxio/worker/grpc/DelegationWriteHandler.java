@@ -11,6 +11,9 @@
 
 package alluxio.worker.grpc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import alluxio.grpc.DataMessageMarshaller;
 import alluxio.grpc.DataMessageMarshallerProvider;
 import alluxio.grpc.WriteRequest;
@@ -33,6 +36,8 @@ public class DelegationWriteHandler implements StreamObserver<alluxio.grpc.Write
   private AuthenticatedUserInfo mUserInfo;
   private final boolean mDomainSocketEnabled;
 
+  private static final Logger LOG = LoggerFactory.getLogger(DelegationWriteHandler.class);
+  
   /**
    * @param workerProcess the worker process instance
    * @param responseObserver the response observer of the gRPC stream
@@ -77,8 +82,10 @@ public class DelegationWriteHandler implements StreamObserver<alluxio.grpc.Write
       mWriteHandler = createWriterHandler(request);
     }
     if (mMarshaller != null) {
+      LOG.info("{} is calling writeDataMessage. dedup? {}", request.hasChunk()? request.getChunk().getDedup() : false);	
       mWriteHandler.writeDataMessage(request, mMarshaller.pollBuffer(request));
     } else {
+      LOG.info("{} is calling write. dedup? {}", request.hasChunk()? request.getChunk().getDedup() : false);		
       mWriteHandler.write(request);
     }
   }

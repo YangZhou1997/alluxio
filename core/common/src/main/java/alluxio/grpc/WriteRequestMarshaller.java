@@ -126,9 +126,11 @@ public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> 
       // @cesar: and set this value here
       ByteBuf bytebuf = GrpcSerializationUtils.getByteBufFromReadableBuffer(buffer);
       if (bytebuf != null) {
+    	LOG.info("@cesar: offer netty");
         offerBuffer(new NettyDataBuffer(bytebuf), request);
       } else {
-        offerBuffer(new ReadableDataBuffer(buffer), request);
+    	LOG.info("@cesar: other");
+    	offerBuffer(new ReadableDataBuffer(buffer), request);
       }
       
       LOG.info("@cesar: Deserializing a message with dedup: {}", dedup);
