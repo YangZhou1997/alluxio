@@ -131,9 +131,10 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
 	  }
 	  catch(HashingException e) {
 		  LOG.error("Exception when hashing", e);
+		  return null;
 	  }
 	  
-  }yte
+  }
   
   public void write(WriteRequest writeRequest) {
 	if (!tryAcquireSemaphore()) {
