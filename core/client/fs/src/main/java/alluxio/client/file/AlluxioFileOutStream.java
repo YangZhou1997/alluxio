@@ -218,6 +218,10 @@ public class AlluxioFileOutStream extends FileOutStream {
   public void write(byte[] b, int off, int len) throws IOException {
     writeInternal(b, off, len);
   }
+  
+  public void writeChunkWithDedup(byte[] b, int off, int len) throws IOException {
+	  writeInternalWithDedup(b, off, len);
+  }
 
   private void writeInternal(int b) throws IOException {
     if (mShouldCacheCurrentBlock) {
@@ -238,6 +242,45 @@ public class AlluxioFileOutStream extends FileOutStream {
     mBytesWritten++;
   }
 
+  
+  private void writeInternalWithDedup(byte[] b, int off, int len) throws IOException {
+	    Preconditions.checkArgument(b != null, PreconditionMessage.ERR_WRITE_BUFFER_NULL);
+	    Preconditions.checkArgument(off >= 0 && len >= 0 && len + off <= b.length,
+	        PreconditionMessage.ERR_BUFFER_STATE.toString(), b.length, off, len);
+
+	    LOG.info("@cesar: Writing with dedup...");
+	    
+	    if (mShouldCacheCurrentBlock) {
+	      try {
+	        int tLen = len;
+	        int tOff = off;
+	        while (tLen > 0) {
+	          if (mCurrentBlockOutStream == null || mCurrentBlockOutStream.remaining() == 0) {
+	            getNextBlock();
+	          }
+	          long currentBlockLeftBytes = mCurrentBlockOutStream.remaining();
+	          if (currentBlockLeftBytes >= tLen) {
+	            mCurrentBlockOutStream.writeWithDedup(b, tOff, tLen);
+	            tLen = 0;
+	          } else {
+	            mCurrentBlockOutStream.writeWithDedup(b, tOff, (int) currentBlockLeftBytes);
+	            tOff += currentBlockLeftBytes;
+	            tLen -= currentBlockLeftBytes;
+	          }
+	        }
+	      } catch (Exception e) {
+	        handleCacheWriteException(e);
+	      }
+	    }
+
+	    if (mUnderStorageType.isSyncPersist()) {
+	      mUnderStorageOutputStream.write(b, off, len);
+	      Metrics.BYTES_WRITTEN_UFS.inc(len);
+	      LOG.info("Sync persist writing {} bytes", len);
+	    }
+	    mBytesWritten += len;
+	  }
+  
   private void writeInternal(byte[] b, int off, int len) throws IOException {
     Preconditions.checkArgument(b != null, PreconditionMessage.ERR_WRITE_BUFFER_NULL);
     Preconditions.checkArgument(off >= 0 && len >= 0 && len + off <= b.length,

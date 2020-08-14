@@ -172,6 +172,23 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
     }
     updateCurrentChunk(false, false);
   }
+  
+  public void writeWithDedup(byte[] b, int off, int len) throws IOException {
+	  LOG.info("@cesar: Writing with dedup...");
+	  if (len == 0) {
+      return;
+    }
+
+    while (len > 0) {
+      updateCurrentChunk(false, false);
+      int toWrite = Math.min(len, mCurrentChunk.writableBytes());
+      mCurrentChunk.writeBytes(b, off, toWrite);
+      off += toWrite;
+      len -= toWrite;
+    }
+    forceFlush();
+    updateCurrentChunk(false, false);
+  }
 
   /**
    * Writes the data in the specified byte buf to this output stream.

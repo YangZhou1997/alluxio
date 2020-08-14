@@ -156,6 +156,7 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
         }
         validateWriteRequest(writeRequest);
         if (writeRequest.hasCommand()) {
+          LOG.info("@cesar: Handling request with command...");	
           WriteRequestCommand command = writeRequest.getCommand();
           if (command.getFlush()) {
             flush();
@@ -178,6 +179,7 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
         	// if content is null, the a normal write request will come...
         }
         else {
+          LOG.info("@cesar: Handling request with chunk...");	
           Preconditions.checkState(writeRequest.hasChunk(),
               "write request is missing data chunk in non-command message");
           ByteString data = writeRequest.getChunk().getData();
@@ -196,7 +198,9 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
           else {
         	  LOG.info("@cesar: This request has no dedup command...");
           }
+          
           writeData(new NioDataBuffer(data.asReadOnlyByteBuffer(), data.size()));
+        
         }
       } catch (Exception e) {
         LogUtils.warnWithException(LOG, "Exception occurred while processing write request {}.",

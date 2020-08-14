@@ -214,8 +214,7 @@ public final class PersistDefinition
         			boolean dedup = channel.getMdataWriterWithDedup().queryForHash(nextChunk.getHash(), 0);
         			if(!dedup) {
         				LOG.info("@cesar: Chunk is not there, sending {} bytes", nextChunk.getContent().length);
-        				out.write(nextChunk.getContent(), 0, nextChunk.getContent().length);
-        				channel.forceFlush();
+        				internalStream.writeChunkWithDedup(nextChunk.getContent(), 0, nextChunk.getContent().length);
         				bytesWritten += nextChunk.getContent().length;
         			}
         			else {
