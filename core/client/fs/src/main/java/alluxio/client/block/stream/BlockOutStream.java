@@ -281,11 +281,17 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
   private void updateCurrentChunk(boolean lastChunk, boolean forceFlush) throws IOException {
     // Early return for the most common case.
     if (mCurrentChunk != null && mCurrentChunk.writableBytes() > 0 && !lastChunk) {
-      return;
+    	if(forceFlush) {
+    		LOG.info("@cesar: Returning too early...");
+    	}
+    	return;
     }
 
     if (mCurrentChunk == null) {
       if (!lastChunk) {
+    	  if(forceFlush) {
+      		LOG.info("@cesar: Buffer allocated...");
+      	}  
         mCurrentChunk = allocateBuffer();
       }
       return;
@@ -296,6 +302,9 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
         if (forceFlush || mCurrentChunk.readableBytes() > 0) {
           for (DataWriter dataWriter : mDataWriters) {
             mCurrentChunk.retain();
+            if(forceFlush) {
+          		LOG.info("@cesar: Writing chunk with dedup activated...");
+          	}
             dataWriter.writeChunk(mCurrentChunk.duplicate(), true);
           }
         } else {

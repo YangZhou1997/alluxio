@@ -219,10 +219,13 @@ public final class GrpcDataWriter implements DataWriter {
               .setData(UnsafeByteOperations.unsafeWrap(buf.nioBuffer()))
               .setDedup(true)
               .build()).build();
+      
       if (mStream instanceof GrpcDataMessageBlockingStream) {
+    	  LOG.info("@cesar: Data message with dedup...");
         ((GrpcDataMessageBlockingStream<WriteRequest, WriteResponse>) mStream)
             .sendDataMessage(new DataMessage<>(request, new NettyDataBuffer(buf)), mDataTimeoutMs);
       } else {
+    	LOG.info("@cesar: Other message with dedup...");
         mStream.send(request, mDataTimeoutMs);
       }
     } finally {
