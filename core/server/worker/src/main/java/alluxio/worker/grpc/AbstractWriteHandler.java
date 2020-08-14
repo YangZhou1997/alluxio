@@ -122,17 +122,18 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
 	  return null;
   }
   
-  private void handleDedupStore(byte[] content) {
+  private byte[] handleDedupStore(byte[] content) {
 	  // @cesar: store
 	  try {
-		  DefaultBlockWorker.chunkStore.storeChunk(
-				  Chunk.build(DefaultBlockWorker.chunkStore.getHashWorkers().hashContent(content), content));
+		  Chunk chunk = Chunk.build(DefaultBlockWorker.chunkStore.getHashWorkers().hashContent(content), content);
+		  DefaultBlockWorker.chunkStore.storeChunk(chunk);
+		  return chunk.getHash();
 	  }
 	  catch(HashingException e) {
 		  LOG.error("Exception when hashing", e);
 	  }
 	  
-  }
+  }yte
   
   public void write(WriteRequest writeRequest) {
 	if (!tryAcquireSemaphore()) {
@@ -353,7 +354,8 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
 	      LOG.info("@cesar: Going to read {} bytes", buf.getLength());
 	      byte[] data = new byte[(int)buf.getLength()];
 	      buf.readBytes(data, 0, data.length);
-	      handleDedupStore(data);
+	      byte[] content = handleDedupStore(data);
+	      LOG.info("@cesar: Stored [{}]", Bytes.toHexString(content));
 	      // @cesar: This is weird but necessary...
 	      buf = new NettyDataBuffer(Unpooled.copiedBuffer(data));
 	      // now recreate this buffer
