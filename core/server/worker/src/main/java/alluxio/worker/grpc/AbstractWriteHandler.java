@@ -351,7 +351,10 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
 	      mContext.setPos(mContext.getPos() + readableBytes);
 	      writeBuf(mContext, mResponseObserver, buf, mContext.getPos());
 	      incrementMetrics(readableBytes);
-	      handleDedupStore(buf.getReadOnlyByteBuffer().array());
+	      LOG.info("@cesar: Going to read {} bytes", buf.getLength());
+	      byte[] data = new byte[(int)buf.getLength()];
+	      buf.readBytes(data, 0, data.length);
+	      handleDedupStore(data);
 	    } catch (Exception e) {
 	      LOG.error("Failed to write data for request {}", mContext.getRequest(), e);
 	      Throwables.throwIfUnchecked(e);
