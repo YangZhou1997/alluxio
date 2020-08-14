@@ -21,6 +21,7 @@ import alluxio.grpc.WriteRequestCommand;
 import alluxio.grpc.WriteResponse;
 import alluxio.grpc.WriteHashRequest;
 import alluxio.network.protocol.databuffer.DataBuffer;
+import alluxio.network.protocol.databuffer.NettyDataBuffer;
 import alluxio.network.protocol.databuffer.NioDataBuffer;
 import alluxio.security.authentication.AuthenticatedUserInfo;
 import alluxio.util.LogUtils;
@@ -36,6 +37,8 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.internal.SerializingExecutor;
 import io.grpc.stub.StreamObserver;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import vmware.speedup.chunk.Chunk;
 import vmware.speedup.chunk.Hash;
 import vmware.speedup.common.HashingException;
@@ -346,15 +349,18 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
 	      if (mContext.isDoneUnsafe() || mContext.getError() != null) {
 	        return;
 	      }
-	      LOG.info("@cesar: Calling writeDataWithDedup with size {}", buf.getLength());  
-	      int readableBytes = buf.readableBytes();
-	      mContext.setPos(mContext.getPos() + readableBytes);
-	      writeBuf(mContext, mResponseObserver, buf, mContext.getPos());
-	      incrementMetrics(readableBytes);
+	      LOG.info("@cesar: Calling writeDataWithDedup with size {}", buf.getLength()); 
 	      LOG.info("@cesar: Going to read {} bytes", buf.getLength());
 	      byte[] data = new byte[(int)buf.getLength()];
 	      buf.readBytes(data, 0, data.length);
 	      handleDedupStore(data);
+	      // @cesar: This is weird but necessary...
+	      buf = new NettyDataBuffer(Unpooled.copiedBuffer(data));
+	      // now recreate this buffer
+	      int readableBytes = buf.readableBytes();
+	      mContext.setPos(mContext.getPos() + readableBytes);
+	      writeBuf(mContext, mResponseObserver, buf, mContext.getPos());
+	      incrementMetrics(readableBytes);
 	    } catch (Exception e) {
 	      LOG.error("Failed to write data for request {}", mContext.getRequest(), e);
 	      Throwables.throwIfUnchecked(e);
