@@ -55,7 +55,6 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
     </dependency>
-
     <!-- Internal dependencies -->
     <dependency>
       <groupId>org.alluxio</groupId>

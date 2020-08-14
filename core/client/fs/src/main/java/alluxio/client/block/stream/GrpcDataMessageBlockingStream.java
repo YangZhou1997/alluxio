@@ -14,6 +14,7 @@ package alluxio.client.block.stream;
 import alluxio.exception.status.DeadlineExceededException;
 import alluxio.grpc.DataMessage;
 import alluxio.grpc.DataMessageMarshaller;
+import alluxio.grpc.WriteRequestMarshaller;
 import alluxio.network.protocol.databuffer.DataBuffer;
 
 import com.google.common.base.Preconditions;
@@ -24,6 +25,9 @@ import java.util.function.Function;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * A helper class for accessing gRPC bi-directional stream synchronously.
  *
@@ -32,6 +36,9 @@ import javax.annotation.concurrent.NotThreadSafe;
  */
 @NotThreadSafe
 public class GrpcDataMessageBlockingStream<ReqT, ResT> extends GrpcBlockingStream<ReqT, ResT> {
+	
+  private static final Logger LOG = LoggerFactory.getLogger(GrpcDataMessageBlockingStream.class);	
+	
   private final DataMessageMarshaller<ReqT> mRequestMarshaller;
   private final DataMessageMarshaller<ResT> mResponseMarshaller;
 
@@ -100,6 +107,7 @@ public class GrpcDataMessageBlockingStream<ReqT, ResT> extends GrpcBlockingStrea
   public void sendDataMessage(DataMessage<ReqT, DataBuffer> message, long timeoutMs)
       throws IOException {
     if (mRequestMarshaller != null) {
+      LOG.info("@cesar: Marshaling message here, type={}", message.getMessage().getClass().getName());	
       mRequestMarshaller.offerBuffer(message.getBuffer(), message.getMessage());
     }
     super.send(message.getMessage(), timeoutMs);

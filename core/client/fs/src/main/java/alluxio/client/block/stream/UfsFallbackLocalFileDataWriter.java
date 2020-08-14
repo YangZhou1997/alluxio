@@ -183,15 +183,20 @@ public final class UfsFallbackLocalFileDataWriter implements DataWriter {
     }
   }
 
-@Override
-public boolean queryForHash(byte[] signature, int type)  throws IOException {
-	// TODO Auto-generated method stub
-	return false;
-}
-
-@Override
-public boolean canDedup() {
-	// TODO Auto-generated method stub
-	return false;
-}
+  @Override
+  public void writeChunk(final ByteBuf buf, boolean force) throws IOException {
+    writeChunk(buf);
+  }
+  
+	@Override
+	public boolean queryForHash(byte[] signature, int type)  throws IOException {
+		// TODO Auto-generated method stub
+		return false;
+	}
+	
+	@Override
+	public boolean canDedup() {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

@@ -208,6 +208,30 @@ public final class GrpcDataWriter implements DataWriter {
       buf.release();
     }
   }
+  
+  @Override
+  public void writeChunk(final ByteBuf buf, boolean force) throws IOException {
+	mPosToQueue += buf.readableBytes();
+    try {
+      WriteRequest request = WriteRequest.newBuilder().setCommand(mPartialRequest).setChunk(
+        // @cesar: I am adding dedup here...  
+    	Chunk.newBuilder()
+              .setData(UnsafeByteOperations.unsafeWrap(buf.nioBuffer()))
+              .setDedup(true)
+              .build()).build();
+      
+      if (mStream instanceof GrpcDataMessageBlockingStream) {
+    	  LOG.info("@cesar: Data message with dedup...");
+        ((GrpcDataMessageBlockingStream<WriteRequest, WriteResponse>) mStream)
+            .sendDataMessage(new DataMessage<>(request, new NettyDataBuffer(buf)), mDataTimeoutMs);
+      } else {
+    	LOG.info("@cesar: Other message with dedup...");
+        mStream.send(request, mDataTimeoutMs);
+      }
+    } finally {
+      buf.release();
+    }
+  }
 
   /**
    * Notifies the server UFS fallback endpoint to start writing a new block by resuming the given

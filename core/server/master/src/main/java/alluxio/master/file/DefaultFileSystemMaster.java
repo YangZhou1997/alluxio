@@ -1314,12 +1314,11 @@ public final class DefaultFileSystemMaster extends CoreMaster
     for (int i = 0; i < blockInfoList.size(); i++) {
       BlockInfo blockInfo = blockInfoList.get(i);
       inAlluxioLength += blockInfo.getLength();
-      LOG.info("@cesar: Skipping the block size, now blocks are as small as i want to...");
-      // if (i < blockInfoList.size() - 1 && blockInfo.getLength() != fileBlockSize) {
-      //   throw new BlockInfoException(
-      //      "Block index " + i + " has a block size smaller than the file block size (" + fileInode
-      //          .getBlockSizeBytes() + ")");
-      //}
+      // LOG.info("@cesar: Skipping the block size, now blocks are as small as i want to...");
+      if (i < blockInfoList.size() - 1 && blockInfo.getLength() != fileBlockSize) {
+         throw new BlockInfoException(
+            "Block index " + i + " has a block size smaller than the file block size (" + fileInode.getBlockSizeBytes() + ")");
+      }
     }
 
     // If the file is persisted, its length is determined by UFS. Otherwise, its length is

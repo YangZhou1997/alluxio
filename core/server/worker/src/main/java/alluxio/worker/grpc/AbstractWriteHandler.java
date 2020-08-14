@@ -21,12 +21,15 @@ import alluxio.grpc.WriteRequestCommand;
 import alluxio.grpc.WriteResponse;
 import alluxio.grpc.WriteHashRequest;
 import alluxio.network.protocol.databuffer.DataBuffer;
+import alluxio.network.protocol.databuffer.NettyDataBuffer;
 import alluxio.network.protocol.databuffer.NioDataBuffer;
 import alluxio.security.authentication.AuthenticatedUserInfo;
 import alluxio.util.LogUtils;
+import alluxio.worker.block.DefaultBlockWorker;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
+import com.datastax.oss.protocol.internal.util.Bytes;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.protobuf.ByteString;
@@ -34,6 +37,12 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.internal.SerializingExecutor;
 import io.grpc.stub.StreamObserver;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
+import vmware.speedup.chunk.Chunk;
+import vmware.speedup.chunk.Hash;
+import vmware.speedup.common.HashingException;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,12 +108,40 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
    *
    * @param writeRequest the request from the client
    */
+  
+  private byte[] handleWriteHashRequest(byte[] query) {
+	  // @cesar: query
+	  Chunk result = DefaultBlockWorker.chunkStore.getChunkByIdentifier(
+  			Hash.fromContent(query, DefaultBlockWorker.chunkStore.getHashWorkers()));
+	  int ack = result == null? -1 : 1;
+	  mResponseObserver.onNext(
+  	        WriteResponse.newBuilder().setOffset(ack).build());
+	  if(result != null) {
+		  return result.getContent();
+	  }
+	  return null;
+  }
+  
+  private byte[] handleDedupStore(byte[] content) {
+	  // @cesar: store
+	  try {
+		  Chunk chunk = Chunk.build(DefaultBlockWorker.chunkStore.getHashWorkers().hashContent(content), content);
+		  DefaultBlockWorker.chunkStore.storeChunk(chunk);
+		  return chunk.getHash();
+	  }
+	  catch(HashingException e) {
+		  LOG.error("Exception when hashing", e);
+		  return null;
+	  }
+	  
+  }
+  
   public void write(WriteRequest writeRequest) {
 	if (!tryAcquireSemaphore()) {
       return;
     }
     mSerializingExecutor.execute(() -> {
-      try {
+      try {   	  
         if (mContext == null) {
           LOG.info("Received write request {}.", writeRequest);
           try {
@@ -124,6 +161,7 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
         }
         validateWriteRequest(writeRequest);
         if (writeRequest.hasCommand()) {
+          LOG.info("@cesar: Handling request with command...");	
           WriteRequestCommand command = writeRequest.getCommand();
           if (command.getFlush()) {
             flush();
@@ -133,21 +171,29 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
         }
         else if (writeRequest.hasWriteHashRequest()) {
         	// @cesar: We were sent a hash, so we need to check it here...
-        	LOG.info("Receiving signature request...");
-        	// reply if we dont have it...
+        	LOG.info("@cesar: Receiving signature request...");
         	WriteHashRequest hashQuery = writeRequest.getWriteHashRequest();
-        	LOG.info("@cesar: Received a query for [{}]", hashQuery.getHash());
-        	// and reply        	
-        	mResponseObserver.onNext(
-        	        WriteResponse.newBuilder().setOffset(100).build());
+        	LOG.info("@cesar: Received a query for [{}]", Bytes.toHexString(hashQuery.getHash().toByteArray()));
+        	byte[] content = handleWriteHashRequest(hashQuery.getHash().toByteArray());
+        	// so now, we have to handle the response
+        	if(content != null) {
+        		ByteString data = ByteString.copyFrom(content);
+        		writeData(new NioDataBuffer(data.asReadOnlyByteBuffer(), data.size()));
+        		LOG.info("Writing {} bytes", data.size());
+        	}
+        	// if content is null, the a normal write request will come...
         }
         else {
+          LOG.info("@cesar: Handling request with chunk...");	
           Preconditions.checkState(writeRequest.hasChunk(),
               "write request is missing data chunk in non-command message");
           ByteString data = writeRequest.getChunk().getData();
           Preconditions.checkState(data != null && data.size() > 0,
               "invalid data size from write request message");
+          // @cesar: we might need to do something here too...
+          LOG.info("@cesar: There might be an issue in this path...");
           writeData(new NioDataBuffer(data.asReadOnlyByteBuffer(), data.size()));
+        
         }
       } catch (Exception e) {
         LogUtils.warnWithException(LOG, "Exception occurred while processing write request {}.",
@@ -166,7 +212,10 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
    * @param buffer the data associated with the request
    */
   public void writeDataMessage(WriteRequest request, DataBuffer buffer) {
-    if (buffer == null) {
+	 LOG.info("@cesar: Calling writeDataMessage");  
+	 LOG.info(request.toString());
+	 if (buffer == null) {
+      	
       write(request);
       return;
     }
@@ -175,11 +224,20 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
     Preconditions.checkState(buffer.readableBytes() > 0,
         "invalid data size from write request message");
     if (!tryAcquireSemaphore()) {
+      LOG.info("@cesar: cannot aquire semaphore");  	
       return;
     }
     mSerializingExecutor.execute(() -> {
       try {
-        writeData(buffer);
+    	  LOG.info("@cesar: Calling writeData");  
+    	 if(request.hasChunk() && request.getChunk().getDedup()) {
+    		 LOG.info("@cesar: writing with dedup...");
+    		 writeDataWithDedup(buffer);
+    	 }
+    	 else {
+    		 LOG.info("@cesar: writing WITHOUT dedup...");
+    		 writeData(buffer);
+    	 }
       } finally {
         mSemaphore.release();
       }
@@ -274,6 +332,7 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
       if (mContext.isDoneUnsafe() || mContext.getError() != null) {
         return;
       }
+      LOG.info("@cesar: Calling writeData with size {}", buf.getLength());  
       int readableBytes = buf.readableBytes();
       mContext.setPos(mContext.getPos() + readableBytes);
       writeBuf(mContext, mResponseObserver, buf, mContext.getPos());
@@ -286,6 +345,33 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
       buf.release();
     }
   }
+  
+  private void writeDataWithDedup(DataBuffer buf) {
+	    try {
+	      if (mContext.isDoneUnsafe() || mContext.getError() != null) {
+	        return;
+	      }
+	      LOG.info("@cesar: Calling writeDataWithDedup with size {}", buf.getLength()); 
+	      LOG.info("@cesar: Going to read {} bytes", buf.getLength());
+	      byte[] data = new byte[(int)buf.getLength()];
+	      buf.readBytes(data, 0, data.length);
+	      byte[] content = handleDedupStore(data);
+	      LOG.info("@cesar: Stored [{}]", Bytes.toHexString(content));
+	      // @cesar: This is weird but necessary...
+	      buf = new NettyDataBuffer(Unpooled.copiedBuffer(data));
+	      // now recreate this buffer
+	      int readableBytes = buf.readableBytes();
+	      mContext.setPos(mContext.getPos() + readableBytes);
+	      writeBuf(mContext, mResponseObserver, buf, mContext.getPos());
+	      incrementMetrics(readableBytes);
+	    } catch (Exception e) {
+	      LOG.error("Failed to write data for request {}", mContext.getRequest(), e);
+	      Throwables.throwIfUnchecked(e);
+	      abort(new Error(AlluxioStatusException.fromCheckedException(e), true));
+	    } finally {
+	      buf.release();
+	    }
+	  }
 
   private void flush() {
     try {

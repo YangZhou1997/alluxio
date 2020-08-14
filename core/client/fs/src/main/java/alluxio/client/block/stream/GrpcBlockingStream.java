@@ -113,6 +113,7 @@ public class GrpcBlockingStream<ReqT, ResT> {
         }
       }
     }
+    LOG.info("@cesar: Sending next request with {}", mRequestObserver.getClass().getName());	
     mRequestObserver.onNext(request);
   }
 

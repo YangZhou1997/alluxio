@@ -47,6 +47,13 @@ import alluxio.worker.block.io.BlockWriter;
 import alluxio.worker.block.meta.BlockMeta;
 import alluxio.worker.block.meta.TempBlockMeta;
 import alluxio.worker.file.FileSystemMasterClient;
+import vmware.speedup.chunk.Chunk;
+import vmware.speedup.chunk.ChunkStore;
+import vmware.speedup.chunk.Hash;
+import vmware.speedup.chunk.cassandra.CassandraChunkStore;
+import vmware.speedup.chunk.cassandra.CassandraClient;
+import vmware.speedup.executor.HashingExecutor;
+import vmware.speedup.executor.SHA1HashingExecutor;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Closer;
@@ -77,6 +84,10 @@ import javax.annotation.concurrent.ThreadSafe;
 public final class DefaultBlockWorker extends AbstractWorker implements BlockWorker {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultBlockWorker.class);
 
+  public static CassandraClient cassandraClient; 
+  public static HashingExecutor hashingExecutor; 
+  public static ChunkStore<Hash, Chunk> chunkStore;
+  
   /** Runnable responsible for heartbeating and registration with master. */
   private BlockMasterSync mBlockMasterSync;
 
@@ -160,6 +171,31 @@ public final class DefaultBlockWorker extends AbstractWorker implements BlockWor
     mUnderFileSystemBlockStore = new UnderFileSystemBlockStore(mBlockStore, ufsManager);
 
     Metrics.registerGauges(this);
+    
+    // @cesar: I will instante the connection to the chunkstore here too
+    // TODO: This can be done better
+    if(cassandraClient == null) {
+    	cassandraClient = new CassandraClient();
+    	cassandraClient.createSession("127.0.0.1", 9042, "datacenter1");
+    	// and try a little warmup
+    	try {
+    		cassandraClient.executeWarmUpQuery();
+    	}
+    	catch(Exception e) {
+    		LOG.error("Error when creating cassandra client...", e);
+    	}
+    }
+    // TODO: This can be done better
+    if(hashingExecutor == null) {
+    	hashingExecutor = new SHA1HashingExecutor(4);
+    }
+    
+    if(chunkStore == null) {
+    	chunkStore = new CassandraChunkStore(cassandraClient, hashingExecutor);
+    }
+    
+    LOG.info("@cesar: Initialized and connected...");
+    
   }
 
   @Override

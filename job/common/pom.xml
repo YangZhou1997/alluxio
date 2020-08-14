@@ -37,6 +37,7 @@
       <artifactId>alluxio-core-common</artifactId>
       <version>${project.version}</version>
     </dependency>
+    
   </dependencies>
 
   <build>

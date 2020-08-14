@@ -14,6 +14,7 @@ package alluxio.job.plan.persist;
 import alluxio.AlluxioURI;
 import alluxio.Constants;
 import alluxio.client.block.BlockWorkerInfo;
+import alluxio.client.block.stream.BlockOutStream;
 import alluxio.client.file.AlluxioFileOutStream;
 import alluxio.client.file.FileInStream;
 import alluxio.client.file.URIStatus;
@@ -35,7 +36,12 @@ import alluxio.underfs.UnderFileSystem;
 import alluxio.underfs.options.CreateOptions;
 import alluxio.underfs.options.MkdirsOptions;
 import alluxio.wire.WorkerInfo;
+import vmware.speedup.chunk.Chunk;
+import vmware.speedup.dedup.OrcFileChunkerV1;
+import vmware.speedup.executor.HashingExecutor;
+import vmware.speedup.executor.SHA1HashingExecutor;
 
+import com.datastax.oss.protocol.internal.util.Bytes;
 import com.google.common.collect.Sets;
 import com.google.common.io.Closer;
 import org.apache.commons.io.IOUtils;
@@ -46,6 +52,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
@@ -63,6 +70,8 @@ public final class PersistDefinition
     extends AbstractVoidPlanDefinition<PersistConfig, SerializableVoid> {
   private static final Logger LOG = LoggerFactory.getLogger(PersistDefinition.class);
 
+  private static HashingExecutor hashingExecutor = new SHA1HashingExecutor(4);
+  
   /**
    * Constructs a new {@link PersistDefinition}.
    */
@@ -180,29 +189,47 @@ public final class PersistDefinition
             ufs.createNonexistingFile(dstPath.toString(),
                 CreateOptions.defaults(ServerConfiguration.global()).setOwner(uriStatus.getOwner())
                 .setGroup(uriStatus.getGroup()).setMode(new Mode((short) uriStatus.getMode()))));
-        if(out instanceof AlluxioFileOutStream) {
-        	LOG.info("@cesar: Got alluxio fileoutstream when writing [{}]", dstPath.toString());
-        	AlluxioFileOutStream xx = (AlluxioFileOutStream)out;
-        	LOG.info("null here? [{}], there? [{}]", xx.getmCurrentBlockOutStream(), xx.getmCurrentBlockOutStream().getMdataWriterWithDedup());
-        	//boolean b1 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
-        	//boolean b2 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
-        	//boolean b3 = xx.getmCurrentBlockOutStream().getMdataWriterWithDedup().queryForHash("hola!".getBytes(), 0);
-        	//LOG.info("@cesar: gotten [{}] && [{}] && [{}]", b1, b2, b3);
-        	LOG.info("Will write 3 blocks!");
-        	String s1 = "block1";
-        	String s2 = "block2";
-        	String s3 = "block3";
-        	xx.writeSpecialChunk(s1.getBytes(), 0, s1.getBytes().length);
-        	xx.writeSpecialChunk(s2.getBytes(), 0, s2.getBytes().length);
-        	xx.writeSpecialChunk(s3.getBytes(), 0, s3.getBytes().length);
-        	xx.close();
-        	
-        }
+        
         URIStatus status = context.getFileSystem().getStatus(uri);
         List<AclEntry> allAcls = Stream.concat(status.getDefaultAcl().getEntries().stream(),
             status.getAcl().getEntries().stream()).collect(Collectors.toList());
         ufs.setAclEntries(dstPath.toString(), allAcls);
-        bytesWritten = IOUtils.copyLarge(in, out, new byte[8 * Constants.MB]);
+        
+        bytesWritten = 0;
+        
+        if(out instanceof AlluxioFileOutStream) {
+        	LOG.info("@cesar: Got alluxio fileoutstream when writing [{}]", dstPath.toString());
+        	AlluxioFileOutStream internalStream = (AlluxioFileOutStream)out;
+        	BlockOutStream channel = internalStream.getmCurrentBlockOutStream();
+        	LOG.info("null here? [{}], there? [{}]", channel, internalStream.getmCurrentBlockOutStream().getMdataWriterWithDedup());
+        	// so we need to bring the whole file back
+        	File materialized = materializeAndSaveFile(uri, in);
+        	if(materialized != null) {
+        		// send it in chunks
+        		OrcFileChunkerV1 chunker = new OrcFileChunkerV1(materialized.getAbsolutePath(), hashingExecutor);
+        		Iterator<Chunk> iterator = chunker.iterator();
+        		while(iterator.hasNext()) {
+        			Chunk nextChunk = iterator.next();
+        			LOG.info("@cesar: Will query [{}]", Bytes.toHexString(nextChunk.getHash()));
+        			boolean dedup = channel.getMdataWriterWithDedup().queryForHash(nextChunk.getHash(), 0);
+        			if(!dedup) {
+        				LOG.info("@cesar: Chunk is not there, sending {} bytes", nextChunk.getContent().length);
+        				internalStream.writeChunkWithDedup(nextChunk.getContent(), 0, nextChunk.getContent().length);
+        				bytesWritten += nextChunk.getContent().length;
+        			}
+        			else {
+        				LOG.info("@cesar: Dedup! we saved {} bytes", nextChunk.getContent().length - nextChunk.getHash().length);
+        				bytesWritten += nextChunk.getHash().length;
+        			}
+        		}
+        		// and then delete the content
+        		LOG.info("@cesar: done, now delete the content");
+        		materialized.delete();
+        	}        	
+        }
+        else {    
+        	bytesWritten = IOUtils.copyLarge(in, out, new byte[8 * Constants.MB]);
+        }
         incrementPersistedMetric(ufsClient.getUfsMountPointUri(), bytesWritten);
       }
       LOG.info("Persisted file {} with size {}", ufsPath, bytesWritten);
@@ -217,13 +244,14 @@ public final class PersistDefinition
   
   
   private File materializeAndSaveFile(AlluxioURI inURI, FileInStream file) throws IOException {
-	  String tmpId = Thread.currentThread().getId() + inURI.getName();
+	  String tmpId = "/tmp/materialized/" + Thread.currentThread().getId() + inURI.getName();
 	  File tmpFile = new File(tmpId);
 	  // now, read the file from the input stream
 	  FileOutputStream fos = new FileOutputStream(tmpFile);
 	  // write it to tmp storage
 	  long written = IOUtils.copyLarge(file, fos, new byte[8 * Constants.MB]);
 	  fos.close();
+	  LOG.info("@cesar: {} bytes written for file [{}] at [{}]", written, inURI.toString());
 	  return tmpFile;
   }
   
