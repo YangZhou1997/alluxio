@@ -220,7 +220,7 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
     if (mClosed) {
       return;
     }
-    updateCurrentChunk(true, true);
+    updateCurrentChunk(false, true);
     for (DataWriter dataWriter : mDataWriters) {
       dataWriter.flush();
     }
