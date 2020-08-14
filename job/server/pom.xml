@@ -64,6 +64,13 @@
       <artifactId>jersey-media-json-jackson</artifactId>
     </dependency>
 
+    <!-- Speedup dependencies -->
+	<dependency>
+		<groupId>com.vmware</groupId>
+  		<artifactId>speedup</artifactId>
+  		<version>1.0</version>
+	</dependency>
+
     <!-- Internal dependencies -->
     <dependency>
       <groupId>org.alluxio</groupId>

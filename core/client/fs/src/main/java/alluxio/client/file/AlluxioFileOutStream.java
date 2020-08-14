@@ -218,13 +218,6 @@ public class AlluxioFileOutStream extends FileOutStream {
   public void write(byte[] b, int off, int len) throws IOException {
     writeInternal(b, off, len);
   }
-  
-  // @cesar: Just write and close...
-  public void writeSpecialChunk(byte[] b, int off, int len) throws IOException {
-	    writeInternal(b, off, len);
-	    // @cesar: I am going to force this out
-	    getNextBlock(true);
-  }
 
   private void writeInternal(int b) throws IOException {
     if (mShouldCacheCurrentBlock) {

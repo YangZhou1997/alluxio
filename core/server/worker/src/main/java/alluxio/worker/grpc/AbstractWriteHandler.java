@@ -24,9 +24,11 @@ import alluxio.network.protocol.databuffer.DataBuffer;
 import alluxio.network.protocol.databuffer.NioDataBuffer;
 import alluxio.security.authentication.AuthenticatedUserInfo;
 import alluxio.util.LogUtils;
+import alluxio.worker.block.DefaultBlockWorker;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
+import com.datastax.oss.protocol.internal.util.Bytes;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
 import com.google.protobuf.ByteString;
@@ -34,6 +36,9 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.internal.SerializingExecutor;
 import io.grpc.stub.StreamObserver;
+import vmware.speedup.chunk.Chunk;
+import vmware.speedup.chunk.Hash;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -99,12 +104,26 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
    *
    * @param writeRequest the request from the client
    */
+  
+  private byte[] handleWriteHashRequest(byte[] query) {
+	  // @cesar: query
+	  Chunk result = DefaultBlockWorker.chunkStore.getChunkByIdentifier(
+  			Hash.fromContent(query, DefaultBlockWorker.chunkStore.getHashWorkers()));
+	  int ack = result == null? -1 : 1;
+	  mResponseObserver.onNext(
+  	        WriteResponse.newBuilder().setOffset(ack).build());
+	  if(result != null) {
+		  return result.getContent();
+	  }
+	  return null;
+  }
+  
   public void write(WriteRequest writeRequest) {
 	if (!tryAcquireSemaphore()) {
       return;
     }
     mSerializingExecutor.execute(() -> {
-      try {
+      try {   	  
         if (mContext == null) {
           LOG.info("Received write request {}.", writeRequest);
           try {
@@ -133,13 +152,17 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
         }
         else if (writeRequest.hasWriteHashRequest()) {
         	// @cesar: We were sent a hash, so we need to check it here...
-        	LOG.info("Receiving signature request...");
-        	// reply if we dont have it...
+        	LOG.info("@cesar: Receiving signature request...");
         	WriteHashRequest hashQuery = writeRequest.getWriteHashRequest();
-        	LOG.info("@cesar: Received a query for [{}]", hashQuery.getHash());
-        	// and reply        	
-        	mResponseObserver.onNext(
-        	        WriteResponse.newBuilder().setOffset(100).build());
+        	LOG.info("@cesar: Received a query for [{}]", Bytes.toHexString(hashQuery.getHash().toByteArray()));
+        	byte[] content = handleWriteHashRequest(hashQuery.getHash().toByteArray());
+        	// so now, we have to handle the response
+        	if(content != null) {
+        		ByteString data = ByteString.copyFrom(content);
+        		writeData(new NioDataBuffer(data.asReadOnlyByteBuffer(), data.size()));
+        		LOG.info("Writing {} bytes", data.size());
+        	}
+        	// if content is null, the a normal write request will come...
         }
         else {
           Preconditions.checkState(writeRequest.hasChunk(),
