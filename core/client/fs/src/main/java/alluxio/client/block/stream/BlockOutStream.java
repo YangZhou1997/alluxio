@@ -217,14 +217,21 @@ public class BlockOutStream extends OutputStream implements BoundedStream, Cance
   }
   
   public void forceFlush() throws IOException {
-    if (mClosed) {
-      return;
-    }
-    LOG.info("@cesar: Forcing flush!");
-    updateCurrentChunk(false, true);
-    for (DataWriter dataWriter : mDataWriters) {
-      dataWriter.flush();
-    }
+	  try {
+        if (mCurrentChunk.readableBytes() > 0) {
+          for (DataWriter dataWriter : mDataWriters) {
+            mCurrentChunk.retain();
+            LOG.info("@cesar: Writing chunk with dedup activated...");
+            dataWriter.writeChunk(mCurrentChunk.duplicate(), true);
+          }
+        } 
+      } finally {
+        // If the packet has bytes to read, we increment its refcount explicitly for every packet
+        // writer. So we need to release here. If the packet has no bytes to read, then it has
+        // to be the last packet. It needs to be released as well.
+        mCurrentChunk.release();
+        mCurrentChunk = null;
+      }
   }
 
   @Override
