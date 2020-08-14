@@ -29,11 +29,17 @@ import java.io.InputStream;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Marshaller for {@link WriteRequest}.
  */
 @NotThreadSafe
 public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(WriteRequestMarshaller.class);	
+	
   private static final int CHUNK_TAG = GrpcSerializationUtils.makeTag(
       WriteRequest.CHUNK_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
   
@@ -83,6 +89,8 @@ public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> 
     stream.writeTag(Chunk.DATA_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
     stream.writeUInt32NoTag(chunkBuffer.readableBytes());
     
+    LOG.info("@cesar: Serializing a message with dedup: {}", message.getChunk().getDedup());
+    
     return new ByteBuf[] { Unpooled.wrappedBuffer(header), (ByteBuf) chunkBuffer.getNettyOutput() };
   }
 
@@ -122,6 +130,9 @@ public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> 
       } else {
         offerBuffer(new ReadableDataBuffer(buffer), request);
       }
+      
+      LOG.info("@cesar: Deserializing a message with dedup: {}", dedup);
+      
       return request;
     }
   }
@@ -142,6 +153,7 @@ public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> 
       boolean dedup = false;
       if(message.getMessage().hasChunk() && message.getMessage().getChunk().hasDedup()) {
     	  dedup = message.getMessage().getChunk().getDedup();
+    	  LOG.info("@cesar: Pairing message with dedup: {}", dedup);
       }
       return message.getMessage().toBuilder()
           .setChunk(Chunk.newBuilder().setDedup(dedup).setData(UnsafeByteOperations.unsafeWrap(bytes)).build())
