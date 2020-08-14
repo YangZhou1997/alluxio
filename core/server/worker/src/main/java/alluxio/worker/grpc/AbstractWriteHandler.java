@@ -111,8 +111,8 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
   
   private byte[] handleWriteHashRequest(byte[] query) {
 	  // @cesar: query
-	  Chunk result = DefaultBlockWorker.chunkStore.getChunkByIdentifier(
-  			Hash.fromContent(query, DefaultBlockWorker.chunkStore.getHashWorkers()));
+	  LOG.info("@cesar: will query [{}] to cassie", Bytes.toHexString(query));
+	  Chunk result = DefaultBlockWorker.chunkStore.getChunkByIdentifier(Hash.fromHash(query));
 	  int ack = result == null? -1 : 1;
 	  mResponseObserver.onNext(
   	        WriteResponse.newBuilder().setOffset(ack).build());
