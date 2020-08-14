@@ -212,7 +212,7 @@ public final class PersistDefinition
         			Chunk nextChunk = iterator.next();
         			LOG.info("@cesar: Will query [{}]", Bytes.toHexString(nextChunk.getHash()));
         			boolean shouldWrite = channel.getMdataWriterWithDedup().queryForHash(nextChunk.getHash(), 0);
-        			if(shouldWrite) {
+        			if(!shouldWrite) {
         				LOG.info("@cesar: Chunk is not there, sending {} bytes", nextChunk.getContent().length);
         				out.write(nextChunk.getContent(), 0, nextChunk.getContent().length);
         				bytesWritten += nextChunk.getContent().length;
