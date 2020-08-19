@@ -29,6 +29,7 @@ import alluxio.worker.block.DefaultBlockWorker;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
+import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
 import com.datastax.oss.protocol.internal.util.Bytes;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
@@ -39,6 +40,8 @@ import io.grpc.internal.SerializingExecutor;
 import io.grpc.stub.StreamObserver;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import vmware.speedup.chunk.CassandraChunkLocation;
+import vmware.speedup.chunk.CassandraHash;
 import vmware.speedup.chunk.Chunk;
 import vmware.speedup.chunk.Hash;
 import vmware.speedup.common.HashingException;
@@ -46,6 +49,8 @@ import vmware.speedup.common.HashingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.RandomAccessFile;
+import java.util.List;
 import java.util.concurrent.Semaphore;
 
 import javax.annotation.concurrent.GuardedBy;
@@ -78,6 +83,8 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
   private final Semaphore mSemaphore = new Semaphore(
       ServerConfiguration.getInt(PropertyKey.WORKER_NETWORK_WRITER_BUFFER_SIZE_MESSAGES), true);
 
+  private static final String DUMMY_HOST = "dummy";
+  
   /**
    * This is initialized only once for a whole file or block in
    * {@link AbstractWriteHandler#write(WriteRequest)}.
@@ -112,24 +119,44 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
   private byte[] handleWriteHashRequest(byte[] query) {
 	  // @cesar: query
 	  LOG.info("@cesar: will query [{}] to cassie", Bytes.toHexString(query));
-	  Chunk result = DefaultBlockWorker.chunkStore.getChunkByIdentifier(Hash.fromHash(query));
-	  int ack = result == null? -1 : 1;
-	  mResponseObserver.onNext(
-  	        WriteResponse.newBuilder().setOffset(ack).build());
-	  if(result != null) {
-		  return result.getContent();
+	  try {
+		  List<CassandraChunkLocation> result = DefaultBlockWorker.chunkStore.getChunkByIdentifier(CassandraHash.fromHash(query, DUMMY_HOST));
+		  int ack = result == null || result.size() == 0? -1 : 1;
+		  mResponseObserver.onNext(
+	  	        WriteResponse.newBuilder().setOffset(ack).build());
+		  if(result != null && result.size() == 1) {
+			  // here we need to get the data
+			  CassandraChunkLocation chunk = result.get(0);
+			  String path = "/mnt/ramdisk/alluxioworker/" + chunk.getBlockId();
+			  LOG.info("@cesar: Going to read [{}] bytes from [{}] at offset {{}}", chunk.getLen(), path, chunk.getOffset());
+			  RandomAccessFile rand = new RandomAccessFile(path, "r");
+			  rand.seek(chunk.getOffset());
+			  byte[] content = new byte[chunk.getLen()];
+			  rand.read(content, 0, content.length);
+			  rand.close();
+			  return content;
+		  }
+		  else {
+			  LOG.info("@cesar: Received a result with [{}] rows", result.size());
+		  }
+		  return null;
 	  }
-	  return null;
+	  catch(Exception e) {
+		  LOG.error("@cesar: Exception when retrieving chunk!", e);
+		  return null;
+	  }
   }
   
-  private byte[] handleDedupStore(byte[] content) {
+  private byte[] handleDedupStore(byte[] content, long blockId, String workerHost, long offset) {
 	  // @cesar: store
 	  try {
-		  Chunk chunk = Chunk.build(DefaultBlockWorker.chunkStore.getHashWorkers().hashContent(content), content);
-		  DefaultBlockWorker.chunkStore.storeChunk(chunk);
+		  CassandraChunkLocation chunk = CassandraChunkLocation.build(
+				  DefaultBlockWorker.chunkStore.getHashWorkers().hashContent(content), 
+				  DUMMY_HOST, String.valueOf(blockId), (int)offset, content.length);
+		  DefaultBlockWorker.chunkStore.storeChunk(Lists.newArrayList(chunk));
 		  return chunk.getHash();
 	  }
-	  catch(HashingException e) {
+	  catch(Exception e) {
 		  LOG.error("Exception when hashing", e);
 		  return null;
 	  }
@@ -354,15 +381,24 @@ abstract class AbstractWriteHandler<T extends WriteRequestContext<?>> {
 	      LOG.info("@cesar: Calling writeDataWithDedup with size {}", buf.getLength()); 
 	      LOG.info("@cesar: Going to read {} bytes", buf.getLength());
 	      byte[] data = new byte[(int)buf.getLength()];
-	      buf.readBytes(data, 0, data.length);
-	      byte[] content = handleDedupStore(data);
-	      LOG.info("@cesar: Stored [{}]", Bytes.toHexString(content));
-	      // @cesar: This is weird but necessary...
+	      // @cesar: This is weird but necessary if we read buff. We need to do it since 
+	      // we need to hash
+	      if(mContext instanceof BlockWriteRequestContext) {
+	    	  LOG.info("@cesar: Handling [{}] bytes at offset [{}] for block [{}]", data.length, mContext.getPos());
+		      buf.readBytes(data, 0, data.length);
+		      byte[] content = handleDedupStore(data, ((BlockWriteRequestContext)mContext).getRequest().getId(), DUMMY_HOST, mContext.getPos());
+		      LOG.info("@cesar: Stored [{}]", Bytes.toHexString(content));
+	      }
+	      else {
+	    	  LOG.warn("@cesar: This is bad, a chunk came here but the context does not have a block id");
+	      }
+	      // follow normal path
 	      buf = new NettyDataBuffer(Unpooled.copiedBuffer(data));
 	      // now recreate this buffer
 	      int readableBytes = buf.readableBytes();
 	      mContext.setPos(mContext.getPos() + readableBytes);
 	      writeBuf(mContext, mResponseObserver, buf, mContext.getPos());
+	      
 	      incrementMetrics(readableBytes);
 	    } catch (Exception e) {
 	      LOG.error("Failed to write data for request {}", mContext.getRequest(), e);

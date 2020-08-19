@@ -51,7 +51,10 @@ import vmware.speedup.chunk.Chunk;
 import vmware.speedup.chunk.ChunkStore;
 import vmware.speedup.chunk.Hash;
 import vmware.speedup.chunk.cassandra.CassandraChunkStore;
+import vmware.speedup.chunk.cassandra.CassandraChunkStoreV2;
 import vmware.speedup.chunk.cassandra.CassandraClient;
+import vmware.speedup.chunk.cassandra.CassandraClientV2;
+import vmware.speedup.executor.CassandraQueryExecutorV2;
 import vmware.speedup.executor.HashingExecutor;
 import vmware.speedup.executor.SHA1HashingExecutor;
 
@@ -84,9 +87,10 @@ import javax.annotation.concurrent.ThreadSafe;
 public final class DefaultBlockWorker extends AbstractWorker implements BlockWorker {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultBlockWorker.class);
 
-  public static CassandraClient cassandraClient; 
+  public static CassandraClientV2 cassandraClient;
+  public static CassandraQueryExecutorV2 queryExecutor;
   public static HashingExecutor hashingExecutor; 
-  public static ChunkStore<Hash, Chunk> chunkStore;
+  public static CassandraChunkStoreV2 chunkStore;
   
   /** Runnable responsible for heartbeating and registration with master. */
   private BlockMasterSync mBlockMasterSync;
@@ -175,15 +179,11 @@ public final class DefaultBlockWorker extends AbstractWorker implements BlockWor
     // @cesar: I will instante the connection to the chunkstore here too
     // TODO: This can be done better
     if(cassandraClient == null) {
-    	cassandraClient = new CassandraClient();
+    	cassandraClient = new CassandraClientV2();
     	cassandraClient.createSession("127.0.0.1", 9042, "datacenter1");
-    	// and try a little warmup
-    	try {
-    		cassandraClient.executeWarmUpQuery();
-    	}
-    	catch(Exception e) {
-    		LOG.error("Error when creating cassandra client...", e);
-    	}
+    }
+    if(queryExecutor == null) {
+    	queryExecutor = new CassandraQueryExecutorV2(4, cassandraClient);
     }
     // TODO: This can be done better
     if(hashingExecutor == null) {
@@ -191,7 +191,7 @@ public final class DefaultBlockWorker extends AbstractWorker implements BlockWor
     }
     
     if(chunkStore == null) {
-    	chunkStore = new CassandraChunkStore(cassandraClient, hashingExecutor);
+    	chunkStore = new CassandraChunkStoreV2(hashingExecutor, queryExecutor);
     }
     
     LOG.info("@cesar: Initialized and connected...");

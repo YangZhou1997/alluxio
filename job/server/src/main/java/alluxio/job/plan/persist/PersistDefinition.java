@@ -38,6 +38,8 @@ import alluxio.underfs.options.MkdirsOptions;
 import alluxio.wire.WorkerInfo;
 import vmware.speedup.chunk.Chunk;
 import vmware.speedup.dedup.OrcFileChunkerV1;
+import vmware.speedup.dedup.OrcFileChunkerV3;
+import vmware.speedup.dedup.OrcFileChunkerV4;
 import vmware.speedup.executor.HashingExecutor;
 import vmware.speedup.executor.SHA1HashingExecutor;
 
@@ -206,7 +208,7 @@ public final class PersistDefinition
         	File materialized = materializeAndSaveFile(uri, in);
         	if(materialized != null) {
         		// send it in chunks
-        		OrcFileChunkerV1 chunker = new OrcFileChunkerV1(materialized.getAbsolutePath(), hashingExecutor);
+        		OrcFileChunkerV3 chunker = new OrcFileChunkerV3(materialized.getAbsolutePath(), hashingExecutor);
         		Iterator<Chunk> iterator = chunker.iterator();
         		while(iterator.hasNext()) {
         			Chunk nextChunk = iterator.next();
