@@ -37,6 +37,7 @@ import alluxio.underfs.options.CreateOptions;
 import alluxio.underfs.options.MkdirsOptions;
 import alluxio.wire.WorkerInfo;
 import vmware.speedup.chunk.Chunk;
+import vmware.speedup.dedup.InternalPackChunker;
 import vmware.speedup.dedup.OrcFileChunkerV1;
 import vmware.speedup.dedup.OrcFileChunkerV3;
 import vmware.speedup.dedup.OrcFileChunkerV4;
@@ -209,6 +210,7 @@ public final class PersistDefinition
         	if(materialized != null) {
         		// send it in chunks
         		OrcFileChunkerV3 chunker = new OrcFileChunkerV3(materialized.getAbsolutePath(), hashingExecutor);
+        		chunker.registerInternalChunker(new InternalPackChunker(12));
         		Iterator<Chunk> iterator = chunker.iterator();
         		while(iterator.hasNext()) {
         			Chunk nextChunk = iterator.next();
