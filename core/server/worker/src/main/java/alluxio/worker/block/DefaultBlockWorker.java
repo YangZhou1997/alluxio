@@ -47,6 +47,16 @@ import alluxio.worker.block.io.BlockWriter;
 import alluxio.worker.block.meta.BlockMeta;
 import alluxio.worker.block.meta.TempBlockMeta;
 import alluxio.worker.file.FileSystemMasterClient;
+import vmware.speedup.chunk.Chunk;
+import vmware.speedup.chunk.ChunkStore;
+import vmware.speedup.chunk.Hash;
+import vmware.speedup.chunk.cassandra.CassandraChunkStore;
+import vmware.speedup.chunk.cassandra.CassandraChunkStoreV2;
+import vmware.speedup.chunk.cassandra.CassandraClient;
+import vmware.speedup.chunk.cassandra.CassandraClientV2;
+import vmware.speedup.executor.CassandraQueryExecutorV2;
+import vmware.speedup.executor.HashingExecutor;
+import vmware.speedup.executor.SHA1HashingExecutor;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Closer;
@@ -77,6 +87,11 @@ import javax.annotation.concurrent.ThreadSafe;
 public final class DefaultBlockWorker extends AbstractWorker implements BlockWorker {
   private static final Logger LOG = LoggerFactory.getLogger(DefaultBlockWorker.class);
 
+  public static CassandraClientV2 cassandraClient;
+  public static CassandraQueryExecutorV2 queryExecutor;
+  public static HashingExecutor hashingExecutor; 
+  public static CassandraChunkStoreV2 chunkStore;
+  
   /** Runnable responsible for heartbeating and registration with master. */
   private BlockMasterSync mBlockMasterSync;
 
@@ -160,6 +175,27 @@ public final class DefaultBlockWorker extends AbstractWorker implements BlockWor
     mUnderFileSystemBlockStore = new UnderFileSystemBlockStore(mBlockStore, ufsManager);
 
     Metrics.registerGauges(this);
+    
+    // @cesar: I will instante the connection to the chunkstore here too
+    // TODO: This can be done better
+    if(cassandraClient == null) {
+    	cassandraClient = new CassandraClientV2();
+    	cassandraClient.createSession("127.0.0.1", 9042, "datacenter1");
+    }
+    if(queryExecutor == null) {
+    	queryExecutor = new CassandraQueryExecutorV2(4, cassandraClient);
+    }
+    // TODO: This can be done better
+    if(hashingExecutor == null) {
+    	hashingExecutor = new SHA1HashingExecutor(4);
+    }
+    
+    if(chunkStore == null) {
+    	chunkStore = new CassandraChunkStoreV2(hashingExecutor, queryExecutor);
+    }
+    
+    LOG.info("@cesar: Initialized and connected...");
+    
   }
 
   @Override

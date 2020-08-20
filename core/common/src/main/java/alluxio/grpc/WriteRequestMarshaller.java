@@ -29,11 +29,17 @@ import java.io.InputStream;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Marshaller for {@link WriteRequest}.
  */
 @NotThreadSafe
 public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> {
+
+  private static final Logger LOG = LoggerFactory.getLogger(WriteRequestMarshaller.class);	
+	
   private static final int CHUNK_TAG = GrpcSerializationUtils.makeTag(
       WriteRequest.CHUNK_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
   
@@ -78,8 +84,13 @@ public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> 
     CodedOutputStream stream = CodedOutputStream.newInstance(header);
     stream.writeTag(WriteRequest.CHUNK_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
     stream.writeUInt32NoTag(message.getChunk().getSerializedSize());
+    stream.writeTag(Chunk.DEDUP_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
+    stream.writeUInt32NoTag(message.getChunk().getDedup()? 1: 0);
     stream.writeTag(Chunk.DATA_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED);
     stream.writeUInt32NoTag(chunkBuffer.readableBytes());
+    
+    LOG.info("@cesar: Serializing a message with dedup: {}", message.getChunk().getDedup());
+    
     return new ByteBuf[] { Unpooled.wrappedBuffer(header), (ByteBuf) chunkBuffer.getNettyOutput() };
   }
 
@@ -100,18 +111,30 @@ public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> 
     		return WriteRequest.newBuilder().setWriteHashRequest(WriteHashRequest.parseFrom(is)).build();
     	}
       }
-      Preconditions.checkState(messageSize == buffer.readableBytes());
+      // @cesar: After this, read the dedup tag
+      int dedupTag = ProtoUtils.readRawVarint32(is);
+      int dedup = ProtoUtils.readRawVarint32(is);
+      // @cesar: Ill comment this check, is not true anymore
+      // Preconditions.checkState(messageSize == buffer.readableBytes());
       Preconditions.checkState(ProtoUtils.readRawVarint32(is) == GrpcSerializationUtils.makeTag(
           Chunk.DATA_FIELD_NUMBER, WireFormat.WIRETYPE_LENGTH_DELIMITED));
       int chunkSize = ProtoUtils.readRawVarint32(is);
+      // @cesar: Ill comment this one out too
       Preconditions.checkState(chunkSize == buffer.readableBytes());
-      WriteRequest request = WriteRequest.newBuilder().build();
+      WriteRequest request = WriteRequest.newBuilder().setChunk(
+    		  Chunk.newBuilder().setDedup(dedup > 0? true : false)).build();
+      // @cesar: and set this value here
       ByteBuf bytebuf = GrpcSerializationUtils.getByteBufFromReadableBuffer(buffer);
       if (bytebuf != null) {
+    	LOG.info("@cesar: offer netty");
         offerBuffer(new NettyDataBuffer(bytebuf), request);
       } else {
-        offerBuffer(new ReadableDataBuffer(buffer), request);
+    	LOG.info("@cesar: other");
+    	offerBuffer(new ReadableDataBuffer(buffer), request);
       }
+      
+      LOG.info("@cesar: Deserializing a message with dedup: {}", dedup);
+      
       return request;
     }
   }
@@ -128,8 +151,14 @@ public class WriteRequestMarshaller extends DataMessageMarshaller<WriteRequest> 
     try {
       byte[] bytes = new byte[buffer.readableBytes()];
       buffer.readBytes(bytes, 0, bytes.length);
+      // @cesar: I need this routing here...
+      boolean dedup = false;
+      if(message.getMessage().hasChunk() && message.getMessage().getChunk().hasDedup()) {
+    	  dedup = message.getMessage().getChunk().getDedup();
+    	  LOG.info("@cesar: Pairing message with dedup: {}", dedup);
+      }
       return message.getMessage().toBuilder()
-          .setChunk(Chunk.newBuilder().setData(UnsafeByteOperations.unsafeWrap(bytes)).build())
+          .setChunk(Chunk.newBuilder().setDedup(dedup).setData(UnsafeByteOperations.unsafeWrap(bytes)).build())
           .build();
     } finally {
       message.getBuffer().release();

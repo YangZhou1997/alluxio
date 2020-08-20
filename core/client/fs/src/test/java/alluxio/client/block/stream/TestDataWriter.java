@@ -57,6 +57,11 @@ public class TestDataWriter implements DataWriter {
     return;
   }
 
+  @Override
+  public void writeChunk(final ByteBuf buf, boolean force) throws IOException {
+    writeChunk(buf);
+  }
+  
 @Override
 public boolean queryForHash(byte[] signature, int type)  throws IOException {
 	// TODO Auto-generated method stub

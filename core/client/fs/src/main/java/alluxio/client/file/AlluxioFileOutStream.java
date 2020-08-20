@@ -219,11 +219,8 @@ public class AlluxioFileOutStream extends FileOutStream {
     writeInternal(b, off, len);
   }
   
-  // @cesar: Just write and close...
-  public void writeSpecialChunk(byte[] b, int off, int len) throws IOException {
-	    writeInternal(b, off, len);
-	    // @cesar: I am going to force this out
-	    getNextBlock(true);
+  public void writeChunkWithDedup(byte[] b, int off, int len) throws IOException {
+	  writeInternalWithDedup(b, off, len);
   }
 
   private void writeInternal(int b) throws IOException {
@@ -245,6 +242,45 @@ public class AlluxioFileOutStream extends FileOutStream {
     mBytesWritten++;
   }
 
+  
+  private void writeInternalWithDedup(byte[] b, int off, int len) throws IOException {
+	    Preconditions.checkArgument(b != null, PreconditionMessage.ERR_WRITE_BUFFER_NULL);
+	    Preconditions.checkArgument(off >= 0 && len >= 0 && len + off <= b.length,
+	        PreconditionMessage.ERR_BUFFER_STATE.toString(), b.length, off, len);
+
+	    LOG.info("@cesar: Writing with dedup...");
+	    
+	    if (mShouldCacheCurrentBlock) {
+	      try {
+	        int tLen = len;
+	        int tOff = off;
+	        while (tLen > 0) {
+	          if (mCurrentBlockOutStream == null || mCurrentBlockOutStream.remaining() == 0) {
+	            getNextBlock();
+	          }
+	          long currentBlockLeftBytes = mCurrentBlockOutStream.remaining();
+	          if (currentBlockLeftBytes >= tLen) {
+	            mCurrentBlockOutStream.writeWithDedup(b, tOff, tLen);
+	            tLen = 0;
+	          } else {
+	            mCurrentBlockOutStream.writeWithDedup(b, tOff, (int) currentBlockLeftBytes);
+	            tOff += currentBlockLeftBytes;
+	            tLen -= currentBlockLeftBytes;
+	          }
+	        }
+	      } catch (Exception e) {
+	        handleCacheWriteException(e);
+	      }
+	    }
+
+	    if (mUnderStorageType.isSyncPersist()) {
+	      mUnderStorageOutputStream.write(b, off, len);
+	      Metrics.BYTES_WRITTEN_UFS.inc(len);
+	      LOG.info("Sync persist writing {} bytes", len);
+	    }
+	    mBytesWritten += len;
+	  }
+  
   private void writeInternal(byte[] b, int off, int len) throws IOException {
     Preconditions.checkArgument(b != null, PreconditionMessage.ERR_WRITE_BUFFER_NULL);
     Preconditions.checkArgument(off >= 0 && len >= 0 && len + off <= b.length,
@@ -279,27 +315,6 @@ public class AlluxioFileOutStream extends FileOutStream {
       LOG.info("Sync persist writing {} bytes", len);
     }
     mBytesWritten += len;
-  }
-
-  private void getNextBlock(boolean force) throws IOException {
-	  if(!force) {
-		  getNextBlock();
-		  return;
-	  }
-	  else {  
-	    if (mCurrentBlockOutStream != null) {
-	      mCurrentBlockOutStream.flush();
-	      mPreviousBlockOutStreams.add(mCurrentBlockOutStream);
-	    }
-	
-	    if (mAlluxioStorageType.isStore()) {
-	      mCurrentBlockOutStream =
-	          mBlockStore.getOutStream(getNextBlockId(), mBlockSize, mOptions);
-	      mShouldCacheCurrentBlock = true;
-	    }
-	}
-    
-    LOG.info("@cesar: Can dedupfor path ? [{}]", mCurrentBlockOutStream.isDedupAble());
   }
   
   private void getNextBlock() throws IOException {

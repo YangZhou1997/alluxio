@@ -20,6 +20,10 @@ import alluxio.retry.RetryUtils;
 import alluxio.security.user.ServerUserState;
 import alluxio.util.CommonUtils;
 import alluxio.util.ConfigurationUtils;
+import vmware.speedup.chunk.ChunkStore;
+import vmware.speedup.chunk.cassandra.CassandraClient;
+import vmware.speedup.executor.HashingExecutor;
+import vmware.speedup.executor.SHA1HashingExecutor;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,8 +38,9 @@ import javax.annotation.concurrent.ThreadSafe;
  */
 @ThreadSafe
 public final class AlluxioWorker {
+	
   private static final Logger LOG = LoggerFactory.getLogger(AlluxioWorker.class);
-
+  
   /**
    * Starts the Alluxio worker.
    *
@@ -47,7 +52,7 @@ public final class AlluxioWorker {
           AlluxioWorker.class.getCanonicalName());
       System.exit(-1);
     }
-
+    
     if (!ConfigurationUtils.masterHostConfigured(ServerConfiguration.global())) {
       ProcessUtils.fatalError(LOG,
           ConfigurationUtils.getMasterHostNotConfiguredMessage("Alluxio worker"));
@@ -81,4 +86,5 @@ public final class AlluxioWorker {
   }
 
   private AlluxioWorker() {} // prevent instantiation
+
 }

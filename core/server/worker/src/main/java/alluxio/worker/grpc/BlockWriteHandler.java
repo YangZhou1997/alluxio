@@ -75,6 +75,7 @@ public final class BlockWriteHandler extends AbstractWriteHandler<BlockWriteRequ
     }
     BlockWriteRequestContext context = new BlockWriteRequestContext(msg, bytesToReserve);
     BlockWriteRequest request = context.getRequest();
+    
     mWorker.createBlockRemote(request.getSessionId(), request.getId(),
         mStorageTierAssoc.getAlias(request.getTier()),
         request.getMediumType(), bytesToReserve);

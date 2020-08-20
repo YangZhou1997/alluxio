@@ -136,6 +136,11 @@ public final class LocalFileDataWriter implements DataWriter {
       buf.release();
     }
   }
+  
+  @Override
+  public void writeChunk(final ByteBuf buf, boolean force) throws IOException {
+    writeChunk(buf);
+  }
 
   @Override
   public void cancel() throws IOException {

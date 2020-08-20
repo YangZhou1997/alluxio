@@ -1,0 +1,23 @@
+syntax = "proto2";
+
+option java_multiple_files = true;
+option java_package = "alluxio.grpc";
+option java_outer_classname = "SpeedupWorker";
+
+package alluxio.grpc.block;
+
+service SpeedupWorkerProto {
+	
+	 rpc GetChunkFromBlock (GetChunkFromBlockRequest) returns (GetChunkFromBlockResponse) {};
+}
+
+message GetChunkFromBlockRequest{
+	optional string blockId = 1;
+	optional int64 offset = 2;
+	optional int64 size = 3;
+	
+}
+
+message GetChunkFromBlockResponse {
+	optional bytes data = 1;
+}

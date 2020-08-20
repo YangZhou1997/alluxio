@@ -1,6 +1,7 @@
 #!/bin/bash
 
-
+# format the alluxio fs
+alluxio format
 ## remove the logs
 rm -rf logs/*
 ## stop and format all
