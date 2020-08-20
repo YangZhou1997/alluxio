@@ -42,6 +42,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.NotThreadSafe;
@@ -111,6 +113,10 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
         new SerializingExecutor(GrpcExecutors.BLOCK_READER_SERIALIZED_RUNNER_EXECUTOR);
   }
 
+  // @yang, generally, we should build a communication channel between the grpc thread 
+  // and the DataReader thread. So that when grpc thread receives the ack for hashquery, 
+  // it can inform the DataReader thread who is blocking on the channel. 
+  // TODO: trying to search the inter-thread communication method in java. 
   @Override
   public void onNext(alluxio.grpc.ReadRequest request) {
     // Expected state: context equals null as this handler is new for request.
@@ -118,21 +124,10 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
     // validation msg as validation may require to update error in context.
     LOG.debug("Received read request {}.", request);
     try (LockResource lr = new LockResource(mLock)) {
-      if(request.hasFirstRead()){
-            // @yang, get the signature
-            byte[] signature = "deadbeef".getBytes();
-            int type = 0;
-            ReadResponse readResponse = ReadResponse.newBuilder()
-		        .setReadHashRequest(ReadHashRequest.newBuilder().setHash(ByteString.copyFrom(signature)).setType(type).build())
-		        .build();
-            mResponseObserver.onNext(readResponse);
-            return;
-      }
       if (request.hasDedupHit()){
-          if(request.getDedupHit()){
-            // @yang, dedup succeeds, we do not need to create a data reader. 
-            return;
-          }
+          // @yang, sending this ack to the DataReader thread. 
+          channel.send(request.getDedupHit());
+          return;
         } 
       if (request.hasOffsetReceived()) {
         mContext.setPosReceived(request.getOffsetReceived());
@@ -141,6 +136,7 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
         }
         return;
       }
+      // the first read request will come here, and start a DataReader thread. 
       Preconditions.checkState(mContext == null || !mContext.isDataReaderActive());
       mContext = createRequestContext(request);
       validateReadRequest(request);
@@ -397,27 +393,46 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
 
           if (chunk != null) {
             DataBuffer finalChunk = chunk;
-            mSerializingExecutor.execute(() -> {
-              try {
-                ReadResponse response = ReadResponse.newBuilder().setChunk(Chunk.newBuilder()
-                    .setData(UnsafeByteOperations.unsafeWrap(finalChunk.getReadOnlyByteBuffer()))
-                ).build();
-                if (mResponse instanceof DataMessageServerStreamObserver) {
-                  ((DataMessageServerStreamObserver<ReadResponse>) mResponse)
-                      .onNext(new DataMessage<>(response, finalChunk));
-                } else {
-                  mResponse.onNext(response);
+            // @yang, pack chunking the DataBuffer. 
+            // for each of the chunk, first sending the ReadHashRequest back
+            for(PackChunk packChunk : packChunkList){
+                byte[] signature = "deadbeef".getBytes();
+                int type = 0;
+                ReadResponse readResponse = ReadResponse.newBuilder()
+    		        .setReadHashRequest(ReadHashRequest.newBuilder().setHash(ByteString.copyFrom(signature)).setType(type).build())
+    		        .build();
+                mResponseObserver.onNext(readResponse);
+
+                boolean ack = waitOn(channel); 
+                if(ack){
+                    continue;
                 }
-                incrementMetrics(finalChunk.getLength());
-              } catch (Exception e) {
-                LogUtils.warnWithException(LOG,
-                    "Exception occurred while sending data for read request {}.",
-                    mContext.getRequest(), e);
-                setError(new Error(AlluxioStatusException.fromThrowable(e), true));
-              } finally {
-                finalChunk.release();
-              }
-            });
+                mSerializingExecutor.execute(() -> {
+                  try {
+                    // dedup fails, send this packChunk. 
+                    // need the ability of choosing whether dedup or not. 
+                    ReadResponse response = ReadResponse.newBuilder().setChunk(Chunk.newBuilder()
+                        .setData(UnsafeByteOperations.unsafeWrap(finalChunk.getReadOnlyByteBuffer()))
+                        .setDedup(true)
+                    ).build();
+                    if (mResponse instanceof DataMessageServerStreamObserver) {
+                      ((DataMessageServerStreamObserver<ReadResponse>) mResponse)
+                          .onNext(new DataMessage<>(response, finalChunk));
+                    } else {
+                      mResponse.onNext(response);
+                    }
+                    incrementMetrics(finalChunk.getLength());
+                  } catch (Exception e) {
+                    LogUtils.warnWithException(LOG,
+                        "Exception occurred while sending data for read request {}.",
+                        mContext.getRequest(), e);
+                    setError(new Error(AlluxioStatusException.fromThrowable(e), true));
+                  } finally {
+                    finalChunk.release();
+                  }
+                });
+            }
+
           }
         } catch (Exception e) {
           LogUtils.warnWithException(LOG,

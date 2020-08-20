@@ -167,6 +167,10 @@ public final class UnderFileSystemBlockReader extends BlockReader {
     while (bytesRead < bytesToRead) {
       int read;
       try {
+        // @yang, this is how asyncCache reads block from UFS storage. 
+        // So here mUnderFileSystemInputStream is got from alluxio-ufs. 
+        // alluxio-ufs got actually AlluxioFileInStream in the client-fs. 
+        // so this read() should be exactly AlluxioFileInStream::read()
         read = mUnderFileSystemInputStream.read(data, bytesRead, (int) (bytesToRead - bytesRead));
       } catch (IOException e) {
         throw AlluxioStatusException.fromIOException(e);

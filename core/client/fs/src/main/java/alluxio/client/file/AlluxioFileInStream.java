@@ -256,6 +256,7 @@ public class AlluxioFileInStream extends FileInStream {
         // Positioned read may be called multiple times for the same block. Caching the in-stream
         // allows us to avoid the block store rpc to open a new stream for each call.
         if (mCachedPositionedReadStream == null) {
+            // @yang, here is the partial reading beginning. 
           mCachedPositionedReadStream = mBlockStore.getInStream(blockId, mOptions, mFailedWorkers);
         } else if (mCachedPositionedReadStream.getId() != blockId) {
           closeBlockInStream(mCachedPositionedReadStream);
@@ -270,6 +271,7 @@ public class AlluxioFileInStream extends FileInStream {
         len -= bytesRead;
         retry = mRetryPolicySupplier.get();
         lastException = null;
+        // @yang, here triggers the async job to cache the whole block. 
         triggerAsyncCaching(mCachedPositionedReadStream);
       } catch (IOException e) {
         lastException = e;

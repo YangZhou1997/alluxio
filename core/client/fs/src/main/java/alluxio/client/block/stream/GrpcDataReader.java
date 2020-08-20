@@ -23,6 +23,10 @@ import alluxio.network.protocol.databuffer.DataBuffer;
 import alluxio.network.protocol.databuffer.NioDataBuffer;
 import alluxio.resource.CloseableResource;
 import alluxio.wire.WorkerNetAddress;
+import vmware.speedup.chunk.Chunk;
+import vmware.speedup.chunk.Hash;
+import vmware.speedup.common.HashingException;
+import com.google.protobuf.ByteString;
 
 import com.google.common.base.MoreObjects;
 import com.google.common.base.Preconditions;
@@ -106,8 +110,9 @@ public final class GrpcDataReader implements DataReader {
         mStream = new GrpcBlockingStream<>(mClient.get()::readBlock, mReaderBufferSizeMessages,
             desc);
       }
-      // @yang, this is the first time sending the read request. 
-      mStream.send(mReadRequest.toBuilder().setFirstRead(true).build(), mDataTimeoutMs);
+      // @yang, this is the first time sending the read request, which will trigger 
+      // a DataReader thread at AbstractReadHandler. 
+      mStream.send(mReadRequest, mDataTimeoutMs);
     } catch (Exception e) {
       mClient.close();
       throw e;
@@ -119,70 +124,106 @@ public final class GrpcDataReader implements DataReader {
     return mPosToRead;
   }
 
+      private byte[] handleWriteHashRequest(byte[] query) {
+        // @cesar: query
+        Chunk result = DefaultBlockWorker.chunkStore.getChunkByIdentifier(
+                Hash.fromContent(query, DefaultBlockWorker.chunkStore.getHashWorkers()));
+        boolean ack = (result != null);
+        mStream.send(mReadRequest.toBuilder().setDedupHit(ack).build());
+        if(result != null) {
+            return result.getContent();
+        }
+        return null;
+    }
+
+    private byte[] handleDedupStore(byte[] content) {
+        // @cesar: store
+        try {
+            Chunk chunk = Chunk.build(DefaultBlockWorker.chunkStore.getHashWorkers().hashContent(content), content);
+            DefaultBlockWorker.chunkStore.storeChunk(chunk);
+            return chunk.getHash();
+        }
+        catch(HashingException e) {
+            LOG.error("Exception when hashing", e);
+            return null;
+        }
+        
+    }
+
   @Override
   public DataBuffer readChunk() throws IOException {
     Preconditions.checkState(!mClient.get().isShutdown(),
         "Data reader is closed while reading data chunks.");
     DataBuffer buffer = null;
     ReadResponse response = null;
-    if (mStream instanceof GrpcDataMessageBlockingStream) {
-      DataMessage<ReadResponse, DataBuffer> message =
-          ((GrpcDataMessageBlockingStream<ReadRequest, ReadResponse>) mStream)
-              .receiveDataMessage(mDataTimeoutMs);
-      if (message != null) {
-        response = message.getMessage();
+    // @yang, generally, we need to enter a loop to receive multiple hash query, and answer 
+    // ack or nack, based on the query results from DefaultBlockWorker.chunkStore. 
+    // 
+    while(true){
+        if (mStream instanceof GrpcDataMessageBlockingStream) {
+          DataMessage<ReadResponse, DataBuffer> message =
+              ((GrpcDataMessageBlockingStream<ReadRequest, ReadResponse>) mStream)
+                  .receiveDataMessage(mDataTimeoutMs);
+          if (message != null) {
+            response = message.getMessage();
+            buffer = message.getBuffer();
+            if (buffer == null && response.hasChunk() && response.getChunk().hasData()) {
+              // falls back to use chunk message for compatibility
+              ByteBuffer byteBuffer = response.getChunk().getData().asReadOnlyByteBuffer();
+              buffer = new NioDataBuffer(byteBuffer, byteBuffer.remaining());
+            }
+            Preconditions.checkState(buffer != null, "response should always contain chunk");
+          }
+        } else {
+          response = mStream.receive(mDataTimeoutMs);
+          if (response != null) {
+            Preconditions.checkState(response.hasChunk() && response.getChunk().hasData(),
+                "response should always contain chunk");
+            ByteBuffer byteBuffer = response.getChunk().getData().asReadOnlyByteBuffer();
+            buffer = new NioDataBuffer(byteBuffer, byteBuffer.remaining());
+          }
+        }
+        if (response == null) {
+          return null;
+        }
         if(response.hasReadHashRequest()){
             // @yang, we recevied a ReadHashRequest. 
-        	LOG.info("Receiving signature request...");
-        	// reply if we dont have it...
+            LOG.info("Receiving signature request...");
+            // reply if we dont have it...
             ReadHashRequest hashQuery = response.getReadHashRequest();
             LOG.info("@yang: Received a query for [{}]", hashQuery.getHash());
-            
-            // and reply false by default, 
-            boolean dedup_hit = false;
-            if(dedup_hit){
-                // we assume 4096 chunk size in dedup by default. 
-                // the real OffsetReceived should be come from the queried chunk for this signature. 
-                mStream.send(mReadRequest.toBuilder().setDedupHit(true).build());
-                // the buffer should come from local chunk store. 
-                ByteBuffer byteBuffer = ByteBuffer.allocate(4096);
-                return new NioDataBuffer(byteBuffer, byteBuffer.remaining());
-            }
-            else{
-                mStream.send(mReadRequest.toBuilder().setDedupHit(false).build());
-                // we should read the next ReadResponse which must contain the real chunk; 
-                return readChunk();
-            }
+
+        	byte[] content = handleWriteHashRequest(hashQuery.getHash().toByteArray());
+            // so now, we have to handle the response
+        	if(content != null) {
+        		ByteString data = ByteString.copyFrom(content);
+        		writeData(new NioDataBuffer(data.asReadOnlyByteBuffer(), data.size()));
+        		LOG.info("Writing {} bytes", data.size());
+        	}
+        	// if content is null, the a normal write request will come...
         }
-        buffer = message.getBuffer();
-        if (buffer == null && response.hasChunk() && response.getChunk().hasData()) {
-          // falls back to use chunk message for compatibility
-          ByteBuffer byteBuffer = response.getChunk().getData().asReadOnlyByteBuffer();
-          buffer = new NioDataBuffer(byteBuffer, byteBuffer.remaining());
+    	if(response.hasChunk() && response.getChunk().getDedup()) {
+            mPosToRead += buffer.readableBytes();
+            byte[] data = new byte[(int)buffer.getLength()];
+	        buffer.readBytes(data, 0, data.length);
+	        byte[] content = handleDedupStore(data);
+	        LOG.info("@yang: Stored [{}]", Bytes.toHexString(content));
         }
-        Preconditions.checkState(buffer != null, "response should always contain chunk");
-      }
-    } else {
-      response = mStream.receive(mDataTimeoutMs);
-      if (response != null) {
-        Preconditions.checkState(response.hasChunk() && response.getChunk().hasData(),
-            "response should always contain chunk");
-        ByteBuffer byteBuffer = response.getChunk().getData().asReadOnlyByteBuffer();
-        buffer = new NioDataBuffer(byteBuffer, byteBuffer.remaining());
-      }
+        else{
+            mPosToRead += buffer.readableBytes();
+        }
+        if(not reading all bytes){
+            continue;
+        }
+        try {
+          mStream.send(mReadRequest.toBuilder().setOffsetReceived(mPosToRead).build());
+        } catch (Exception e) {
+          // nothing is done as the receipt is sent at best effort
+          LOG.debug("Failed to send receipt of data to worker {} for request {}: {}.", mAddress,
+              mReadRequest, e.getMessage());
+        }
+        Preconditions.checkState(mPosToRead - mReadRequest.getOffset() <= mReadRequest.getLength());
     }
-    if (response == null) {
-      return null;
-    }
-    mPosToRead += buffer.readableBytes();
-    try {
-      mStream.send(mReadRequest.toBuilder().setOffsetReceived(mPosToRead).build());
-    } catch (Exception e) {
-      // nothing is done as the receipt is sent at best effort
-      LOG.debug("Failed to send receipt of data to worker {} for request {}: {}.", mAddress,
-          mReadRequest, e.getMessage());
-    }
-    Preconditions.checkState(mPosToRead - mReadRequest.getOffset() <= mReadRequest.getLength());
     return buffer;
   }
 
