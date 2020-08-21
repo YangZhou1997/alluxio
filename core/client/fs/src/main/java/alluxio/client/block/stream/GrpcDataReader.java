@@ -28,6 +28,18 @@ import vmware.speedup.chunk.Hash;
 import vmware.speedup.common.HashingException;
 import vmware.speedup.chunk.CassandraChunkLocation;
 import vmware.speedup.chunk.CassandraHash;
+import vmware.speedup.chunk.ChunkStore;
+import vmware.speedup.chunk.cassandra.CassandraChunkStore;
+import vmware.speedup.chunk.cassandra.CassandraChunkStoreV2;
+import vmware.speedup.chunk.cassandra.CassandraClient;
+import vmware.speedup.chunk.cassandra.CassandraClientV2;
+import vmware.speedup.executor.CassandraQueryExecutorV2;
+import vmware.speedup.executor.HashingExecutor;
+import vmware.speedup.executor.SHA1HashingExecutor;
+import com.datastax.oss.protocol.internal.util.Bytes;
+import com.datastax.oss.driver.shaded.guava.common.collect.Lists;
+import java.util.List;
+
 import com.google.protobuf.ByteString;
 
 import com.google.common.base.MoreObjects;
@@ -71,6 +83,30 @@ public final class GrpcDataReader implements DataReader {
   private long mPosToRead;
 
   private static final String DUMMY_HOST = "dummy";
+  public static CassandraClientV2 cassandraClient;
+  public static CassandraQueryExecutorV2 queryExecutor;
+  public static HashingExecutor hashingExecutor; 
+  public static CassandraChunkStoreV2 chunkStore;
+  
+  static 
+  {
+    // @yang: I will instante the connection to the chunkstore here too
+    // TODO: This can be done better
+    if(cassandraClient == null) {
+    	cassandraClient = new CassandraClientV2();
+    	cassandraClient.createSession("127.0.0.1", 9042, "datacenter1");
+    }
+    if(queryExecutor == null) {
+    	queryExecutor = new CassandraQueryExecutorV2(4, cassandraClient);
+    }
+    // TODO: This can be done better
+    if(hashingExecutor == null) {
+    	hashingExecutor = new SHA1HashingExecutor(4);
+    }
+    if(chunkStore == null) {
+    	chunkStore = new CassandraChunkStoreV2(hashingExecutor, queryExecutor);
+    }
+  }
 
   /**
    * Creates an instance of {@link GrpcDataReader}.
@@ -91,7 +127,7 @@ public final class GrpcDataReader implements DataReader {
     mDataTimeoutMs = alluxioConf.getMs(PropertyKey.USER_STREAMING_DATA_TIMEOUT);
     mMarshaller = new ReadResponseMarshaller();
     mClient = mContext.acquireBlockWorkerClient(address);
-
+    
     try {
       if (alluxioConf.getBoolean(PropertyKey.USER_STREAMING_ZEROCOPY_ENABLED)) {
         String desc = "Zero Copy GrpcDataReader";
@@ -135,19 +171,18 @@ public final class GrpcDataReader implements DataReader {
    * @param writeRequest the request from the client
    */
   
-    private byte[] handleWriteHashRequest(byte[] query) {
+    private byte[] handleReadHashRequest(byte[] query) {
         // @yang: query
-        LOG.info("@cesar: will query [{}] to cassie", Bytes.toHexString(query));
+        LOG.info("@yang: will query [{}] to cassie", Bytes.toHexString(query));
         try {
-            List<CassandraChunkLocation> result = DefaultBlockWorker.chunkStore.getChunkByIdentifier(CassandraHash.fromHash(query, DUMMY_HOST));
-            int ack = result == null || result.size() == 0? -1 : 1;
-            mResponseObserver.onNext(
-                    WriteResponse.newBuilder().setOffset(ack).build());
+            List<CassandraChunkLocation> result = GrpcDataReader.chunkStore.getChunkByIdentifier(CassandraHash.fromHash(query, DUMMY_HOST));
+            boolean ack = (result != null && result.size() != 0);
+            mStream.send(ReadRequest.newBuilder().setDedupHit(ack).build());
             if(result != null && result.size() == 1) {
                 // here we need to get the data
                 CassandraChunkLocation chunk = result.get(0);
                 String path = "/mnt/ramdisk/alluxioworker/" + chunk.getBlockId();
-                LOG.info("@cesar: Going to read [{}] bytes from [{}] at offset {{}}", chunk.getLen(), path, chunk.getOffset());
+                LOG.info("@yang: Going to read [{}] bytes from [{}] at offset {{}}", chunk.getLen(), path, chunk.getOffset());
                 RandomAccessFile rand = new RandomAccessFile(path, "r");
                 rand.seek(chunk.getOffset());
                 byte[] content = new byte[chunk.getLen()];
@@ -156,12 +191,12 @@ public final class GrpcDataReader implements DataReader {
                 return content;
             }
             else {
-                LOG.info("@cesar: Received a result with [{}] rows", result.size());
+                LOG.info("@yang: Received a result with [{}] rows", result.size());
             }
             return null;
         }
         catch(Exception e) {
-            LOG.error("@cesar: Exception when retrieving chunk!", e);
+            LOG.error("@yang: Exception when retrieving chunk!", e);
             return null;
         }
     }
@@ -170,9 +205,9 @@ public final class GrpcDataReader implements DataReader {
         // @yang: store
         try {
             CassandraChunkLocation chunk = CassandraChunkLocation.build(
-                    DefaultBlockWorker.chunkStore.getHashWorkers().hashContent(content), 
+                    GrpcDataReader.chunkStore.getHashWorkers().hashContent(content), 
                     DUMMY_HOST, String.valueOf(blockId), (int)offset, content.length);
-            DefaultBlockWorker.chunkStore.storeChunk(Lists.newArrayList(chunk));
+            GrpcDataReader.chunkStore.storeChunk(Lists.newArrayList(chunk));
             return chunk.getHash();
         }
         catch(Exception e) {
@@ -190,7 +225,6 @@ public final class GrpcDataReader implements DataReader {
     ReadResponse response = null;
     // @yang, generally, we need to enter a loop to receive multiple hash query, and answer 
     // ack or nack, based on the query results from DefaultBlockWorker.chunkStore. 
-    // 
     while(true){
         if (mStream instanceof GrpcDataMessageBlockingStream) {
           DataMessage<ReadResponse, DataBuffer> message =
@@ -225,37 +259,38 @@ public final class GrpcDataReader implements DataReader {
             ReadHashRequest hashQuery = response.getReadHashRequest();
             LOG.info("@yang: Received a query for [{}]", hashQuery.getHash());
 
-        	byte[] content = handleWriteHashRequest(hashQuery.getHash().toByteArray());
+        	byte[] content = handleReadHashRequest(hashQuery.getHash().toByteArray());
             // so now, we have to handle the response
         	if(content != null) {
-        		ByteString data = ByteString.copyFrom(content);
-        		writeData(new NioDataBuffer(data.asReadOnlyByteBuffer(), data.size()));
-        		LOG.info("Writing {} bytes", data.size());
+                buffer.readBytes(content, 0, content.length);
+                mPosToRead += mPosToRead;
+        		LOG.info("Reading {} bytes", content.length);
         	}
         	// if content is null, the a normal write request will come...
         }
-    	if(response.hasChunk() && response.getChunk().getDedup()) {
-            mPosToRead += buffer.readableBytes();
+    	else if(response.hasChunk() && response.getChunk().getDedup()) {
             byte[] data = new byte[(int)buffer.getLength()];
-	        buffer.readBytes(data, 0, data.length);
-	        byte[] content = handleDedupStore(data);
+            buffer.readBytes(data, 0, data.length);
+            mPosToRead += data.length;
+            byte[] content = handleDedupStore(data, mReadRequest.getBlockId(), DUMMY_HOST, mReadRequest.getOffset());
 	        LOG.info("@yang: Stored [{}]", Bytes.toHexString(content));
         }
         else{
-            mPosToRead += buffer.readableBytes();
+            LOG.info("@yang receive ReadResponse without chunk and readHashRequest");
         }
-        if(not reading all bytes){
-            continue;
+
+        if(buffer.getLength() >= mReadRequest.getLength()){
+            break;
         }
-        try {
-          mStream.send(mReadRequest.toBuilder().setOffsetReceived(mPosToRead).build());
-        } catch (Exception e) {
-          // nothing is done as the receipt is sent at best effort
-          LOG.debug("Failed to send receipt of data to worker {} for request {}: {}.", mAddress,
-              mReadRequest, e.getMessage());
-        }
-        Preconditions.checkState(mPosToRead - mReadRequest.getOffset() <= mReadRequest.getLength());
     }
+    try {
+      mStream.send(mReadRequest.toBuilder().setOffsetReceived(mPosToRead).build());
+    } catch (Exception e) {
+      // nothing is done as the receipt is sent at best effort
+      LOG.debug("Failed to send receipt of data to worker {} for request {}: {}.", mAddress,
+          mReadRequest, e.getMessage());
+    }
+    Preconditions.checkState(mPosToRead - mReadRequest.getOffset() <= mReadRequest.getLength());
     return buffer;
   }
 

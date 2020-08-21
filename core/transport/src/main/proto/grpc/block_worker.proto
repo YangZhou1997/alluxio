@@ -85,7 +85,7 @@ message ReadHashRequest {
 message ReadResponse {
   oneof value {
     Chunk chunk = 1;
-    ReadHashRequest ReadHashRequest = 2;
+    ReadHashRequest readHashRequest = 2;
   }
 }
 

@@ -440,12 +440,12 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
                 boolean ack = mContext.getAckQueue().take(); 
                 if(ack){
                     continue;
-								}
-								byte[] rawBytes = c.get().getContent();
-								ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(rawBytes.length, rawBytes.length);
-								buf.writeBytes(rawBytes);
-								DataBuffer finalChunk = new NettyDataBuffer(buf);
-								mSerializingExecutor.execute(() -> {
+				}
+				byte[] rawBytes = c.get().getContent();
+				ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(rawBytes.length, rawBytes.length);
+				buf.writeBytes(rawBytes);
+				DataBuffer finalChunk = new NettyDataBuffer(buf);
+				mSerializingExecutor.execute(() -> {
                   try {
                     // dedup fails, send this packChunk. 
                     // need the ability of choosing whether dedup or not. 
@@ -469,9 +469,9 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
                     finalChunk.release();
                   }
                 });
-						}
-						// release the chunk DataBuffer. 
-						chunk.release();
+			}
+			// release the chunk DataBuffer. 
+			chunk.release();
           }
         } catch (Exception e) {
           LogUtils.warnWithException(LOG,
