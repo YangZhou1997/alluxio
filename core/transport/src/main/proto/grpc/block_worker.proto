@@ -81,7 +81,7 @@ message ReadHashRequest {
 
 
 // The read response.
-// next available id: 2
+// next available id: 3
 message ReadResponse {
   oneof value {
     Chunk chunk = 1;

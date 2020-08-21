@@ -30,6 +30,13 @@
   </properties>
 
   <dependencies>
+  	<!-- Speedup dependencies -->
+	<dependency>
+		<groupId>com.vmware</groupId>
+  		<artifactId>speedup</artifactId>
+  		<version>1.0</version>
+	</dependency>
+
     <!-- External dependencies -->
     <dependency>
       <groupId>com.google.guava</groupId>

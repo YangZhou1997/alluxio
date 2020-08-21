@@ -26,6 +26,8 @@ import alluxio.wire.WorkerNetAddress;
 import vmware.speedup.chunk.Chunk;
 import vmware.speedup.chunk.Hash;
 import vmware.speedup.common.HashingException;
+import vmware.speedup.chunk.CassandraChunkLocation;
+import vmware.speedup.chunk.CassandraHash;
 import com.google.protobuf.ByteString;
 
 import com.google.common.base.MoreObjects;
@@ -35,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.io.RandomAccessFile;
 
 import javax.annotation.concurrent.NotThreadSafe;
 
@@ -66,6 +69,8 @@ public final class GrpcDataReader implements DataReader {
 
   /** The next pos to read. */
   private long mPosToRead;
+
+  private static final String DUMMY_HOST = "dummy";
 
   /**
    * Creates an instance of {@link GrpcDataReader}.
@@ -124,26 +129,53 @@ public final class GrpcDataReader implements DataReader {
     return mPosToRead;
   }
 
-      private byte[] handleWriteHashRequest(byte[] query) {
-        // @cesar: query
-        Chunk result = DefaultBlockWorker.chunkStore.getChunkByIdentifier(
-                Hash.fromContent(query, DefaultBlockWorker.chunkStore.getHashWorkers()));
-        boolean ack = (result != null);
-        mStream.send(mReadRequest.toBuilder().setDedupHit(ack).build());
-        if(result != null) {
-            return result.getContent();
+   /**
+   * Handles write request.
+   *
+   * @param writeRequest the request from the client
+   */
+  
+    private byte[] handleWriteHashRequest(byte[] query) {
+        // @yang: query
+        LOG.info("@cesar: will query [{}] to cassie", Bytes.toHexString(query));
+        try {
+            List<CassandraChunkLocation> result = DefaultBlockWorker.chunkStore.getChunkByIdentifier(CassandraHash.fromHash(query, DUMMY_HOST));
+            int ack = result == null || result.size() == 0? -1 : 1;
+            mResponseObserver.onNext(
+                    WriteResponse.newBuilder().setOffset(ack).build());
+            if(result != null && result.size() == 1) {
+                // here we need to get the data
+                CassandraChunkLocation chunk = result.get(0);
+                String path = "/mnt/ramdisk/alluxioworker/" + chunk.getBlockId();
+                LOG.info("@cesar: Going to read [{}] bytes from [{}] at offset {{}}", chunk.getLen(), path, chunk.getOffset());
+                RandomAccessFile rand = new RandomAccessFile(path, "r");
+                rand.seek(chunk.getOffset());
+                byte[] content = new byte[chunk.getLen()];
+                rand.read(content, 0, content.length);
+                rand.close();
+                return content;
+            }
+            else {
+                LOG.info("@cesar: Received a result with [{}] rows", result.size());
+            }
+            return null;
         }
-        return null;
+        catch(Exception e) {
+            LOG.error("@cesar: Exception when retrieving chunk!", e);
+            return null;
+        }
     }
 
-    private byte[] handleDedupStore(byte[] content) {
-        // @cesar: store
+    private byte[] handleDedupStore(byte[] content, long blockId, String workerHost, long offset) {
+        // @yang: store
         try {
-            Chunk chunk = Chunk.build(DefaultBlockWorker.chunkStore.getHashWorkers().hashContent(content), content);
-            DefaultBlockWorker.chunkStore.storeChunk(chunk);
+            CassandraChunkLocation chunk = CassandraChunkLocation.build(
+                    DefaultBlockWorker.chunkStore.getHashWorkers().hashContent(content), 
+                    DUMMY_HOST, String.valueOf(blockId), (int)offset, content.length);
+            DefaultBlockWorker.chunkStore.storeChunk(Lists.newArrayList(chunk));
             return chunk.getHash();
         }
-        catch(HashingException e) {
+        catch(Exception e) {
             LOG.error("Exception when hashing", e);
             return null;
         }

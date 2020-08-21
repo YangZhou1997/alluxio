@@ -17,6 +17,7 @@ import com.codahale.metrics.Meter;
 import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.ThreadSafe;
+import java.util.concurrent.BlockingQueue;
 
 /**
  * Represents the context of a read request received from gRPC stream. This class serves the
@@ -30,6 +31,9 @@ public class ReadRequestContext<T extends ReadRequest> {
 
   /** The requests of this context. */
   private final T mRequest;
+
+  // adding a BlockingQueue for communicating with the DataReader thread
+  private BlockingQueue<Boolean> mAckQueue;
 
   /**
    * Set to true if the data reader is active. The following invariants must be maintained:
@@ -95,6 +99,12 @@ public class ReadRequestContext<T extends ReadRequest> {
    */
   public T getRequest() {
     return mRequest;
+  }
+
+  // @yang
+  @GuardedBy("AbstractReadHandler#mLock")
+  public BlockingQueue<Boolean> getAckQueue() {
+    return mAckQueue;
   }
 
   /**
@@ -167,6 +177,12 @@ public class ReadRequestContext<T extends ReadRequest> {
   @Nullable
   public Meter getMeter() {
     return mMeter;
+  }
+  
+  // @yang
+  @GuardedBy("AbstractReadHandler#mLock")
+  public void setAckQueue(BlockingQueue<Boolean> ackQueue) {
+    mAckQueue = ackQueue;
   }
 
   /**

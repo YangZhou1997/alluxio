@@ -23,9 +23,11 @@ import alluxio.network.protocol.databuffer.DataBuffer;
 import alluxio.resource.LockResource;
 import alluxio.security.authentication.AuthenticatedUserInfo;
 import alluxio.util.LogUtils;
+import alluxio.network.protocol.databuffer.NettyDataBuffer;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
+import com.fasterxml.jackson.annotation.JsonTypeInfo.None;
 import com.google.common.base.Preconditions;
 import com.google.protobuf.UnsafeByteOperations;
 import com.google.protobuf.ByteString;
@@ -44,6 +46,15 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Future;
+import java.util.List;
+import java.io.IOException;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
+
+import vmware.speedup.dedup.InternalPackChunker;
+import vmware.speedup.executor.HashingExecutor;
+import vmware.speedup.executor.SHA1HashingExecutor;
 
 import javax.annotation.concurrent.GuardedBy;
 import javax.annotation.concurrent.NotThreadSafe;
@@ -95,6 +106,10 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
    * visible across both gRPC and I/O threads, meanwhile no atomicity of operation is assumed;
    */
   private volatile T mContext;
+
+  //@yang, channel to communicate with the datareader thread
+  BlockingQueue<Boolean> mAckQueue;
+
   private final StreamObserver<ReadResponse> mResponseObserver;
 
   /**
@@ -111,6 +126,7 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
     mUserInfo = userInfo;
     mSerializingExecutor =
         new SerializingExecutor(GrpcExecutors.BLOCK_READER_SERIALIZED_RUNNER_EXECUTOR);
+    // mChannels = new ConcurrentHashMap<String, BlockingQueue>(new Hashtable<String, BlockingQueue>());
   }
 
   // @yang, generally, we should build a communication channel between the grpc thread 
@@ -126,10 +142,13 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
     try (LockResource lr = new LockResource(mLock)) {
       if (request.hasDedupHit()){
           // @yang, sending this ack to the DataReader thread. 
-          channel.send(request.getDedupHit());
+          mAckQueue.put(request.getDedupHit());
           return;
         } 
       if (request.hasOffsetReceived()) {
+          // from my understanding, for each connection, 
+          // there is a new AbstractReadHandler object created to communicate with the new created GrpcDataReader object in the client side. 
+          // along the communication, the state of AbstractReadHandler is maintained. 
         mContext.setPosReceived(request.getOffsetReceived());
         if (!tooManyPendingChunks()) {
           onReady();
@@ -140,6 +159,9 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
       Preconditions.checkState(mContext == null || !mContext.isDataReaderActive());
       mContext = createRequestContext(request);
       validateReadRequest(request);
+      //@yang, create a channel between the grpc thread and the datareader thread. 
+      mAckQueue = new LinkedBlockingQueue<Boolean>();
+      mContext.setAckQueue(mAckQueue);
       mContext.setPosToQueue(mContext.getRequest().getStart());
       mContext.setPosReceived(mContext.getRequest().getStart());
       mDataReaderExecutor.submit(createDataReader(mContext, mResponseObserver));
@@ -392,22 +414,38 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
           }
 
           if (chunk != null) {
-            DataBuffer finalChunk = chunk;
+            byte [] content = chunk.getReadOnlyByteBuffer().array();
+            InternalPackChunker packChunker = new InternalPackChunker(12);
+            HashingExecutor executor = new SHA1HashingExecutor(1);
+            List<Future<vmware.speedup.chunk.Chunk>> chunks = null;
+            try {
+              chunks = packChunker.chunkContent(content, 0, content.length, executor);
+            } catch (IOException e) {
+              LOG.error(e.toString());
+						}
+						if(chunks == null){
+							continue;
+						}
+            
             // @yang, pack chunking the DataBuffer. 
             // for each of the chunk, first sending the ReadHashRequest back
-            for(PackChunk packChunk : packChunkList){
-                byte[] signature = "deadbeef".getBytes();
+            for(Future<vmware.speedup.chunk.Chunk> c : chunks){
+                byte[] signature = c.get().getHash();
                 int type = 0;
                 ReadResponse readResponse = ReadResponse.newBuilder()
-    		        .setReadHashRequest(ReadHashRequest.newBuilder().setHash(ByteString.copyFrom(signature)).setType(type).build())
-    		        .build();
+	    		        .setReadHashRequest(ReadHashRequest.newBuilder().setHash(ByteString.copyFrom(signature)).setType(type).build())
+	    		        .build();
                 mResponseObserver.onNext(readResponse);
-
-                boolean ack = waitOn(channel); 
+                // @yang, blocking for receiving ack from grpc thread. 
+                boolean ack = mContext.getAckQueue().take(); 
                 if(ack){
                     continue;
-                }
-                mSerializingExecutor.execute(() -> {
+								}
+								byte[] rawBytes = c.get().getContent();
+								ByteBuf buf = PooledByteBufAllocator.DEFAULT.buffer(rawBytes.length, rawBytes.length);
+								buf.writeBytes(rawBytes);
+								DataBuffer finalChunk = new NettyDataBuffer(buf);
+								mSerializingExecutor.execute(() -> {
                   try {
                     // dedup fails, send this packChunk. 
                     // need the ability of choosing whether dedup or not. 
@@ -431,8 +469,9 @@ abstract class AbstractReadHandler<T extends ReadRequestContext<?>>
                     finalChunk.release();
                   }
                 });
-            }
-
+						}
+						// release the chunk DataBuffer. 
+						chunk.release();
           }
         } catch (Exception e) {
           LogUtils.warnWithException(LOG,
